@@ -40,11 +40,13 @@ button{font-family:inherit;cursor:pointer}
 #screen-start{max-width:640px;margin:0 auto;padding:40px 20px;min-height:100vh;display:flex;flex-direction:column;justify-content:center}
 .start-header{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;margin-bottom:8px}
 .start-header .brand-row{display:flex;align-items:center;gap:10px;justify-content:center}
+.start-logo{height:56px;width:auto;margin-bottom:6px}
 .logo-dot{width:14px;height:14px;border-radius:3px;background:var(--green)}
-.start-header h1{font-size:22px;margin:0}
 .version-badge{display:inline-block;font-size:11px;font-weight:700;color:var(--muted);background:#e6e9ee;border-radius:10px;padding:2px 8px;vertical-align:middle;letter-spacing:.2px}
 .topbar .brand .version-badge{background:rgba(13,44,94,.12);color:var(--pm-navy)}
-.start-header .sub{color:var(--muted);font-size:14px;margin-top:2px}
+.start-header .sub{color:var(--muted);font-size:14px;margin:2px 0 0;line-height:1.6;font-weight:400}
+.start-header .sub .brand-name{color:var(--navy2);font-size:16px;font-weight:700}
+.start-header .sub .disclaimer{font-style:italic}
 .card{background:var(--card);border-radius:var(--radius);padding:22px 24px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-top:18px}
 .card-row{display:flex;gap:18px;flex-wrap:wrap}
 .card-row .card{flex:1;min-width:320px}
@@ -277,11 +279,12 @@ input[type=range]{accent-color:var(--blue)}
 <!-- ================= START SCREEN ================= -->
 <div id="screen-start">
   <div class="start-header">
-    <div class="brand-row">
-      <div class="logo-dot"></div>
-      <h1>PM-Z3RT SIM <span class="version-badge">v0.1</span></h1>
-    </div>
-    <div class="sub">Übungsplattform für das GPM Basiszertifikat im Projektmanagement · inoffiziell, zu Übungszwecken</div>
+    <div class="logo-dot"></div>
+    <h1 class="sub">
+      <span class="brand-name">PM-Z3RT SIM</span> <span class="version-badge">v0.1</span><br>
+      Übungsplattform für das GPM Basiszertifikat im Projektmanagement<br>
+      <span class="disclaimer">- inoffiziell und nur zu privaten Übungszwecken, psst 🤫 -</span>
+    </h1>
   </div>
 
   <div class="warning-note hidden" id="manual-grading-note">
