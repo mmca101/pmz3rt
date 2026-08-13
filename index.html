@@ -382,7 +382,7 @@ input[type=range]{accent-color:var(--blue)}
           <div class="small-note">
             Fragen werden bei jedem Seitenaufruf direkt aus diesem Sheet geladen (keine im Simulator gespeicherte Kopie).
             Das Sheet muss auf "Jeder mit dem Link kann ansehen" freigegeben sein. Erwartete Spalten: Kompetenzelement,
-            Frage, Antwortmöglichkeit, Ergänzende Informationen.
+            Frage, Antwortmöglichkeit, Ergänzende Informationen. Eigene Fragen erstellen? <a href="https://docs.google.com/spreadsheets/d/1bpyb94Ys9gumoJ3QtW8ZpQM-ebY1gGtEKNu4qi6AjEo/copy" target="_blank" rel="noopener">leere Vorlage als Kopie in Google Drive anlegen ↗</a>.
           </div>
         </div>
       </details>
@@ -1362,8 +1362,21 @@ function renderResultsHtml(){
     </div>`;
   }
 
+  const totalOpen = session.questions.filter(q=>q.type==='open').length;
+  let bulkAiBtnHtml = '';
+  if(getAiKey() && totalOpen > 0){
+    if(session.aiGradingRunning){
+      bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn" disabled>⏳ KI-Bewertung läuft…</button>`;
+    } else if(ungradedOpen === 0){
+      bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn" disabled>✓ Alle offenen Fragen bereits bewertet</button>`;
+    } else {
+      bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn">✨ Alle offenen Fragen mit KI bewerten (${ungradedOpen})</button>`;
+    }
+  }
   html += `<div class="toolbar-row" style="margin-bottom:24px">
+    ${bulkAiBtnHtml}
     <button class="btn btn-primary" id="restart-btn">Neue Übung starten</button>
+    <button class="btn btn-secondary" id="export-csv-btn">📥 Antworten als CSV exportieren</button>
   </div>`;
 
   html += '<div class="ke-results">';
@@ -1385,27 +1398,11 @@ function renderResultsHtml(){
   }
   html += '</div>';
 
-  const totalOpen = session.questions.filter(q=>q.type==='open').length;
-  let bulkAiBtnHtml = '';
-  if(getAiKey() && totalOpen > 0){
-    if(session.aiGradingRunning){
-      bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn" disabled>⏳ KI-Bewertung läuft…</button>`;
-    } else if(ungradedOpen === 0){
-      bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn" disabled>✓ Alle offenen Fragen bereits bewertet</button>`;
-    } else {
-      bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn">✨ Alle offenen Fragen mit KI bewerten (${ungradedOpen})</button>`;
-    }
-  }
-  html += `<div class="toolbar-row" style="margin-bottom:24px">
-    ${bulkAiBtnHtml}
-    <button class="btn btn-secondary" id="export-csv-btn">📥 Antworten als CSV exportieren</button>
-  </div>`;
-
   html += `<div class="filter-row" id="review-filters">
-    <button class="active" data-f="all">Alle (${session.questions.length})</button>
+    <button data-f="all">Alle (${session.questions.length})</button>
+    <button class="active" data-f="wrong">Falsch / offen</button>
     <button data-f="mc">Multiple Choice</button>
     <button data-f="open">Freitext</button>
-    <button data-f="wrong">Falsch / offen</button>
   </div>`;
 
   html += `<div id="review-list"></div>`;
@@ -1414,7 +1411,7 @@ function renderResultsHtml(){
 }
 
 function wireResultsEvents(){
-  let filter = 'all';
+  let filter = 'wrong';
   renderReviewList(filter);
   document.getElementById('review-filters').addEventListener('click', (e)=>{
     const btn = e.target.closest('button[data-f]');
