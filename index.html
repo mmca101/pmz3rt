@@ -63,17 +63,15 @@ button{font-family:inherit;cursor:pointer}
 .field{flex:1;min-width:180px}
 .field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px}
 .field input[type=number],.field input[type=text],.field input[type=password]{width:100%;padding:9px 10px;border:1px solid var(--grey);border-radius:6px;font-size:14px}
-.ke-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:2px 14px;max-height:340px;overflow:auto;padding:4px 2px}
-.ke-item-wrap{display:flex;align-items:center;gap:2px;flex-wrap:wrap;padding:2px 0}
-.ke-item{display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 2px;flex:1;min-width:0}
+.ke-grid{display:flex;flex-direction:column;gap:1px;max-height:340px;overflow:auto;padding:4px 2px}
+.ke-item-wrap{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;padding:4px 6px;border-radius:6px}
+.ke-item-wrap:hover{background:#f5f7fa}
+.ke-item{display:flex;align-items:center;gap:8px;font-size:13px;min-width:0}
 .ke-item input{margin:0;flex:0 0 auto}
-.ke-item .cnt{color:var(--muted);font-size:11.5px}
-.ke-more-btn{flex:0 0 auto;background:transparent;border:1px solid var(--grey);border-radius:5px;width:22px;height:22px;font-size:12px;color:var(--muted);line-height:1;padding:0}
-.ke-more-btn:hover{background:#eef1f5;color:var(--navy2)}
-.ke-weight-row{width:100%;padding:4px 2px 8px 30px;font-size:12px;color:var(--muted)}
-.ke-weight-row label{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.ke-weight-row input[type=range]{width:110px;vertical-align:middle}
-.ke-weight-value{font-weight:700;color:var(--navy2);min-width:20px;display:inline-block}
+.ke-item .cnt{color:var(--muted);font-size:11.5px;white-space:nowrap}
+.ke-weight-control{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);flex:0 0 auto}
+.ke-weight-control input[type=range]{width:90px;vertical-align:middle}
+.ke-weight-value{font-weight:700;color:var(--navy2);min-width:18px;display:inline-block;text-align:right}
 .toolbar-row{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap}
 .btn{border:none;border-radius:6px;padding:10px 18px;font-size:14px;font-weight:600}
 .btn-primary{background:var(--green);color:#fff}
@@ -86,6 +84,8 @@ button{font-family:inherit;cursor:pointer}
 .btn-link:hover{background:rgba(29,78,216,.15)}
 .ke-filter-row{gap:6px}
 .ke-filter-row .btn-link{padding:5px 10px;font-size:12px;flex:1;text-align:center;white-space:nowrap}
+.ke-filter-row .ke-randomize-btn{background:rgba(181,104,13,.12);color:var(--amber-d);border-color:rgba(181,104,13,.3)}
+.ke-filter-row .ke-randomize-btn:hover{background:rgba(181,104,13,.22)}
 .small-note{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5}
 .small-note.status-ok{color:var(--green-d);font-weight:600}
 .small-note.status-bad{color:var(--danger);font-weight:600}
@@ -335,15 +335,13 @@ input[type=range]{accent-color:var(--blue)}
         <summary><span>Kompetenzelemente bearbeiten</span><span class="config-section-count" id="ke-toggle-badge"></span></summary>
         <div class="config-section-body">
           <div class="toolbar-row ke-filter-row" style="margin-bottom:10px">
+            <button class="btn-link ke-randomize-btn" id="ke-randomize">🎲 Gewichtung zufällig</button>
             <button class="btn-link" id="ke-all">Alle</button>
             <button class="btn-link" data-domain="Kontext">Kontext</button>
             <button class="btn-link" data-domain="Persönliches und Soziales">Persönliches und Soziales</button>
             <button class="btn-link" data-domain="Methoden und Technisches">Methoden und Technisches</button>
             <button class="btn-link" data-domain="Sonstige">Sonstige</button>
             <button class="btn-link" id="ke-none">Keine</button>
-          </div>
-          <div class="toolbar-row" style="margin-bottom:10px">
-            <button class="btn-link" id="ke-randomize">🎲 Gewichtung zufällig</button>
           </div>
           <div class="ke-grid" id="ke-grid"></div>
         </div>
@@ -736,21 +734,12 @@ function renderKeGrid(){
         <input type="checkbox" data-key="${ke.key}" checked>
         <span>${keLabel(ke)}</span> <span class="cnt">(${ke.count})</span>
       </label>
-      <button type="button" class="ke-more-btn" data-key="${ke.key}" title="Gewichtung anpassen">⋯</button>
-      <div class="ke-weight-row hidden" data-key-row="${ke.key}">
-        <label>Gewichtung <span class="badge-note">(mehr = anteilig mehr Fragen aus diesem Thema)</span>:
-          <input type="range" min="1" max="5" step="1" value="1" class="ke-weight-input" data-key="${ke.key}">
-          <span class="ke-weight-value" data-key-value="${ke.key}">1×</span>
-        </label>
+      <div class="ke-weight-control" title="Gewichtung: mehr = anteilig mehr Fragen aus diesem Thema">
+        <input type="range" min="1" max="5" step="1" value="1" class="ke-weight-input" data-key="${ke.key}">
+        <span class="ke-weight-value" data-key-value="${ke.key}">1×</span>
       </div>`;
     grid.appendChild(wrap);
   }
-  grid.querySelectorAll('.ke-more-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const row = grid.querySelector(`.ke-weight-row[data-key-row="${btn.dataset.key}"]`);
-      row.classList.toggle('hidden');
-    });
-  });
   grid.querySelectorAll('.ke-weight-input').forEach(input=>{
     input.addEventListener('input', ()=>{
       const v = parseInt(input.value, 10);
@@ -760,16 +749,21 @@ function renderKeGrid(){
       persistConfig();
     });
   });
+  randomizeWeights();
   applySavedKeSelection();
 }
 
-document.getElementById('ke-randomize').addEventListener('click', ()=>{
+function randomizeWeights(){
   grid.querySelectorAll('.ke-weight-input').forEach(input=>{
     const v = 1 + Math.floor(Math.random() * 5); // 1-5
     input.value = v;
     keWeights.set(input.dataset.key, v);
     grid.querySelector(`.ke-weight-value[data-key-value="${input.dataset.key}"]`).textContent = `${v}×`;
   });
+}
+
+document.getElementById('ke-randomize').addEventListener('click', ()=>{
+  randomizeWeights();
   updateSummary();
   persistConfig();
 });
