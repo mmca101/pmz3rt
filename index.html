@@ -99,6 +99,8 @@ input[type=range]{accent-color:var(--blue)}
 .topbar .timer.low{background:var(--danger);color:#fff}
 .topbar .end-btn{background:transparent;border:1px solid rgba(13,44,94,.4);color:var(--pm-navy);padding:7px 14px;border-radius:6px;font-size:13px}
 .topbar .end-btn:hover{background:rgba(13,44,94,.1)}
+.hamburger-btn{display:none;background:transparent;border:none;color:var(--pm-navy);padding:6px;border-radius:6px;align-items:center;justify-content:center;flex:0 0 auto}
+.hamburger-btn:hover{background:rgba(13,44,94,.1)}
 
 .navbar{background:var(--pm-blue);color:#fff;display:flex;align-items:stretch;flex:0 0 auto}
 .navbar button.arrow{background:transparent;border:none;color:#fff;font-size:18px;padding:0 20px;font-weight:700}
@@ -110,9 +112,12 @@ input[type=range]{accent-color:var(--blue)}
 .navbar .bookmark-btn.active{color:#ffd75e}
 .navbar .bookmark-btn.active svg path{fill:#ffd75e}
 
-.body-wrap{flex:1;display:flex;min-height:0}
+.body-wrap{flex:1;display:flex;min-height:0;position:relative}
 .sidebar{width:250px;flex:0 0 auto;background:var(--pm-navy);color:#fff;overflow-y:auto;padding:14px 0}
 .sidebar .ov-title{display:flex;align-items:center;justify-content:space-between;padding:0 16px 10px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#c7d1e0;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:8px}
+.sidebar-close-btn{display:none;background:transparent;border:none;color:#c7d1e0;font-size:22px;line-height:1;padding:0 4px;cursor:pointer}
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:39}
+.sidebar-backdrop.visible{display:block}
 .sidebar .group{margin-bottom:6px}
 .sidebar .group-name{padding:8px 16px 4px;font-size:11.5px;font-weight:700;color:#9db0cf;text-transform:uppercase;letter-spacing:.3px}
 .circles{display:flex;flex-wrap:wrap;gap:10px;padding:6px 16px 10px}
@@ -206,6 +211,43 @@ input[type=range]{accent-color:var(--blue)}
 .filter-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
 .filter-row button{border:1px solid var(--grey);background:#fff;padding:6px 14px;border-radius:16px;font-size:12.5px}
 .filter-row button.active{background:var(--navy2);color:#fff;border-color:var(--navy2)}
+
+/* ---------- Mobile: collapse the question overview into a burger-toggled
+   slide-in drawer, and tighten up spacing generally ---------- */
+@media (max-width: 760px){
+  .hamburger-btn{display:flex}
+  .topbar{padding:8px 10px;gap:6px}
+  .topbar .brand{font-size:12.5px;gap:5px}
+  .topbar .brand .version-badge{display:none}
+  .topbar .timer{font-size:12.5px;padding:5px 8px}
+  .topbar .end-btn{padding:6px 9px;font-size:11px;white-space:nowrap}
+
+  .navbar button.arrow{padding:0 12px}
+  .navbar .navcenter{font-size:12.5px}
+  .navbar .bookmark-btn span{display:none}
+  .navbar .bookmark-btn{padding:0 12px}
+
+  .sidebar{
+    position:fixed;
+    top:0; bottom:0; left:0;
+    width:82%;
+    max-width:300px;
+    z-index:40;
+    transform:translateX(-100%);
+    transition:transform .22s ease;
+    box-shadow:2px 0 12px rgba(0,0,0,.3);
+  }
+  .sidebar.mobile-open{transform:translateX(0)}
+  .sidebar-close-btn{display:block}
+
+  .workarea{padding:16px 14px 40px}
+  .q-info-row{gap:8px;margin-bottom:14px}
+  .q-info-box{min-width:0}
+  .q-stem{padding:14px 16px;font-size:14px}
+  .bottom-nav{flex-direction:column-reverse;gap:8px}
+  .bottom-nav button{width:100%;text-align:center}
+  .rte{min-height:130px}
+}
 </style>
 </head>
 <body>
@@ -363,6 +405,11 @@ input[type=range]{accent-color:var(--blue)}
 <!-- ================= EXAM SCREEN ================= -->
 <div id="screen-exam" class="hidden">
   <div class="topbar">
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Übersicht anzeigen">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
     <div class="brand"><span class="logo-dot"></span> PM-Z3RT SIM <span class="version-badge">v0.1</span></div>
     <div class="timer" id="timer-display">90:00</div>
     <button class="end-btn" id="end-exam-btn">PRÜFUNG BEENDEN</button>
@@ -379,8 +426,9 @@ input[type=range]{accent-color:var(--blue)}
     <button class="arrow" id="next-btn">&#8594;</button>
   </div>
   <div class="body-wrap">
-    <div class="sidebar">
-      <div class="ov-title"><span>Übersicht</span></div>
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+    <div class="sidebar" id="exam-sidebar">
+      <div class="ov-title"><span>Übersicht</span><button class="sidebar-close-btn" id="sidebar-close-btn" aria-label="Übersicht schließen">&times;</button></div>
       <div id="ov-groups"></div>
     </div>
     <div class="workarea" id="workarea">
@@ -451,10 +499,27 @@ function setAiKeyStatus(text, kind){
   else if(kind === 'bad') aiKeyStatus.classList.add('status-bad');
 }
 const manualGradingNote = document.getElementById('manual-grading-note');
-function refreshAiKeyStatus(){
+
+// Re-validates live (not just "is something saved") so the notice reflects
+// reality: shown whenever there's no key, the key is invalid, or a later
+// grading call revealed the key stopped working — never just because a
+// string happens to sit in localStorage.
+async function refreshAiKeyStatus(){
   const key = getAiKey();
-  setAiKeyStatus(key ? '✓ Key gespeichert – KI-Bewertung ist im Review verfügbar.' : '', null);
-  manualGradingNote.classList.toggle('hidden', !!key);
+  if(!key){
+    setAiKeyStatus('', null);
+    manualGradingNote.classList.remove('hidden');
+    return;
+  }
+  setAiKeyStatus('Key wird geprüft…', null);
+  const result = await testGeminiKey(key);
+  if(result.ok){
+    setAiKeyStatus('✓ Key gespeichert und gültig – KI-Bewertung ist im Review verfügbar.', 'ok');
+    manualGradingNote.classList.add('hidden');
+  } else {
+    setAiKeyStatus('✗ Gespeicherter Key ist ungültig: ' + result.message, 'bad');
+    manualGradingNote.classList.remove('hidden');
+  }
 }
 aiKeyInput.value = getAiKey();
 refreshAiKeyStatus();
@@ -557,6 +622,47 @@ async function aiGradeOpenQuestion(q, candidateText){
   return {correct: !!parsed.correct, feedback: String(parsed.feedback || '').trim()};
 }
 
+// ---------- persisted configurator state (survives reloads until reset) ----------
+const CONFIG_STORAGE_KEY = 'pmzert_config';
+function loadSavedConfig(){
+  try{
+    const raw = localStorage.getItem(CONFIG_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e){ return null; }
+}
+function persistConfig(){
+  try{
+    localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify({
+      count: document.getElementById('cfg-count').value,
+      time: document.getElementById('cfg-time').value,
+      name: document.getElementById('cfg-name').value,
+      focusType: focusSlider.value,
+      keKeys: selectedKEKeys()
+    }));
+  } catch(e){ /* localStorage unavailable — persistence is a nice-to-have, not required */ }
+}
+function clearSavedConfig(){
+  localStorage.removeItem(CONFIG_STORAGE_KEY);
+}
+// Restores count/time/name/focus-type immediately (these fields exist from
+// the start); KE checkboxes are restored separately once the grid exists.
+function applySavedScalarFields(){
+  const cfg = loadSavedConfig();
+  if(!cfg) return;
+  if(cfg.count) document.getElementById('cfg-count').value = cfg.count;
+  if(cfg.time) document.getElementById('cfg-time').value = cfg.time;
+  if(cfg.name != null) document.getElementById('cfg-name').value = cfg.name;
+  if(cfg.focusType) focusSlider.value = cfg.focusType;
+}
+function applySavedKeSelection(){
+  const cfg = loadSavedConfig();
+  if(!cfg || !Array.isArray(cfg.keKeys)) return;
+  const keySet = new Set(cfg.keKeys);
+  grid.querySelectorAll('input[type=checkbox]').forEach(el=>{
+    el.checked = keySet.has(el.dataset.key);
+  });
+}
+
 // ---------- start screen: render KE checkboxes ----------
 const grid = document.getElementById('ke-grid');
 function renderKeGrid(){
@@ -568,6 +674,7 @@ function renderKeGrid(){
       <span>${keLabel(ke)}</span> <span class="cnt">(${ke.count})</span>`;
     grid.appendChild(div);
   }
+  applySavedKeSelection();
 }
 
 function selectedKEKeys(){
@@ -605,13 +712,15 @@ function updateSummary(){
   document.getElementById('cfg-summary').textContent =
     `${keys.length} Kompetenzelement(e) ausgewählt · ${actualTotal} Fragen in dieser Prüfung${shortfall}.`;
 }
-grid.addEventListener('change', updateSummary);
-document.getElementById('cfg-count').addEventListener('input', updateSummary);
+grid.addEventListener('change', ()=>{ updateSummary(); persistConfig(); });
+document.getElementById('cfg-count').addEventListener('input', ()=>{ updateSummary(); persistConfig(); });
+document.getElementById('cfg-time').addEventListener('input', persistConfig);
+document.getElementById('cfg-name').addEventListener('input', persistConfig);
 document.getElementById('ke-all').addEventListener('click', ()=>{
-  grid.querySelectorAll('input').forEach(el=>el.checked=true); updateSummary();
+  grid.querySelectorAll('input').forEach(el=>el.checked=true); updateSummary(); persistConfig();
 });
 document.getElementById('ke-none').addEventListener('click', ()=>{
-  grid.querySelectorAll('input').forEach(el=>el.checked=false); updateSummary();
+  grid.querySelectorAll('input').forEach(el=>el.checked=false); updateSummary(); persistConfig();
 });
 document.querySelectorAll('button[data-domain]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
@@ -620,6 +729,7 @@ document.querySelectorAll('button[data-domain]').forEach(btn=>{
       el.checked = domainForKe(ke) === btn.dataset.domain;
     });
     updateSummary();
+    persistConfig();
   });
 });
 
@@ -629,7 +739,13 @@ function updateFocusLabel(){
   const v = parseInt(focusSlider.value, 10);
   focusLabel.textContent = `${v}% Multiple Choice / ${100 - v}% Freitext`;
 }
-focusSlider.addEventListener('input', updateFocusLabel);
+focusSlider.addEventListener('input', ()=>{ updateFocusLabel(); persistConfig(); });
+updateFocusLabel();
+
+// Restore previously-saved count/time/name/focus-type now that every field
+// referenced above exists; the KE checkbox selection is restored separately
+// in renderKeGrid() once the grid itself exists (after questions load).
+applySavedScalarFields();
 updateFocusLabel();
 
 document.getElementById('cfg-reset-btn').addEventListener('click', ()=>{
@@ -640,6 +756,7 @@ document.getElementById('cfg-reset-btn').addEventListener('click', ()=>{
   focusSlider.value = '19';
   updateFocusLabel();
   updateSummary();
+  clearSavedConfig();
   // deliberately does not touch the saved Gemini API key
 });
 
@@ -724,6 +841,7 @@ function startExam(){
     aiFeedback: new Map(), // id -> {feedback, error} from AI grading
     aiAutoRan: false,
     aiGradingRunning: false,
+    aiKeyRecheckDone: false,
     timeMinutes,
     finished: false,
     candidateName: document.getElementById('cfg-name').value.trim()
@@ -791,7 +909,7 @@ function renderOverview(){
       btn.textContent = (idx+1);
       btn.title = keLabel(keMap.get(q.keKey));
       btn.dataset.idx = idx;
-      btn.addEventListener('click', ()=>{ saveCurrentAnswer(); currentIndex = idx; renderQuestion(); });
+      btn.addEventListener('click', ()=>{ saveCurrentAnswer(); currentIndex = idx; renderQuestion(); closeMobileSidebar(); });
       circles.appendChild(btn);
     }
     g.appendChild(circles);
@@ -969,6 +1087,23 @@ document.getElementById('bookmark-btn').addEventListener('click', ()=>{
   document.getElementById('bookmark-btn').classList.toggle('active', session.bookmarks.has(q.id));
   refreshCircleStates();
 });
+
+// ---------- mobile: burger-toggled overview drawer ----------
+const examSidebar = document.getElementById('exam-sidebar');
+const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+function openMobileSidebar(){
+  examSidebar.classList.add('mobile-open');
+  sidebarBackdrop.classList.add('visible');
+}
+function closeMobileSidebar(){
+  examSidebar.classList.remove('mobile-open');
+  sidebarBackdrop.classList.remove('visible');
+}
+document.getElementById('hamburger-btn').addEventListener('click', ()=>{
+  examSidebar.classList.contains('mobile-open') ? closeMobileSidebar() : openMobileSidebar();
+});
+document.getElementById('sidebar-close-btn').addEventListener('click', closeMobileSidebar);
+sidebarBackdrop.addEventListener('click', closeMobileSidebar);
 
 function showFinishPanel(){
   const wa = document.getElementById('workarea');
@@ -1177,6 +1312,14 @@ async function runAiGradeQuestion(sess, q){
     sess.aiFeedback.set(q.id, {feedback: result.feedback, error: null});
   } catch(err){
     sess.aiFeedback.set(q.id, {feedback: null, error: (err && err.message) || String(err)});
+    // A grading call failing suggests the key may have stopped working since
+    // it was last validated (revoked, quota exhausted, etc.) — re-check once
+    // per session so the start screen's notice is accurate whenever the user
+    // gets back there, without re-pinging on every single failure in a batch.
+    if(!sess.aiKeyRecheckDone){
+      sess.aiKeyRecheckDone = true;
+      refreshAiKeyStatus();
+    }
   }
 }
 
