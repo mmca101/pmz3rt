@@ -59,6 +59,7 @@ button{font-family:inherit;cursor:pointer}
 .config-section summary:hover{background:#eef1f5}
 .config-section summary span:first-child{flex:1}
 .config-section-count{font-size:11.5px;color:var(--muted);font-weight:600}
+.config-section-count.non-default{color:var(--amber-d);background:#fff0d9;padding:2px 8px;border-radius:10px}
 .config-section-body{padding:16px}
 .card h2{font-size:15px;margin:0 0 12px;color:var(--navy2)}
 .field-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px}
@@ -854,7 +855,11 @@ function updateFocusLabel(){
   const v = parseInt(focusSlider.value, 10);
   focusLabel.textContent = `${v}% Multiple Choice / ${100 - v}% Freitext`;
   const badge = document.getElementById('focus-toggle-badge');
-  if(badge) badge.textContent = v === FOCUS_DEFAULT ? `${v}% (Standard)` : `${v}%`;
+  if(badge){
+    const isDefault = v === FOCUS_DEFAULT;
+    badge.textContent = isDefault ? `${v}% (Standard)` : `⚠ ${v}% (abweichend)`;
+    badge.classList.toggle('non-default', !isDefault);
+  }
   // Only nag about the real exam's ~19% once the user actually strays from
   // it — no need to warn someone who hasn't touched the default.
   const warning = document.getElementById('focus-warning-note');
@@ -1357,6 +1362,10 @@ function renderResultsHtml(){
     </div>`;
   }
 
+  html += `<div class="toolbar-row" style="margin-bottom:24px">
+    <button class="btn btn-primary" id="restart-btn">Neue Übung starten</button>
+  </div>`;
+
   html += '<div class="ke-results">';
   for(const r of keResults){
     const stateClass = r.pending ? 'pending' : (r.passed ? 'pass' : 'fail');
@@ -1389,7 +1398,7 @@ function renderResultsHtml(){
   }
   html += `<div class="toolbar-row" style="margin-bottom:24px">
     ${bulkAiBtnHtml}
-    <button class="btn btn-primary" id="restart-btn">Neue Übung starten</button>
+    <button class="btn btn-secondary" id="export-csv-btn">📥 Antworten als CSV exportieren</button>
   </div>`;
 
   html += `<div class="filter-row" id="review-filters">
@@ -1425,6 +1434,51 @@ function wireResultsEvents(){
   if(aiAllBtn){
     aiAllBtn.addEventListener('click', ()=> runBulkAiGrade(aiAllBtn));
   }
+
+  const exportBtn = document.getElementById('export-csv-btn');
+  if(exportBtn){
+    exportBtn.addEventListener('click', downloadAnswersCsv);
+  }
+}
+
+function ownAnswerText(q){
+  const a = session.answers.get(q.id);
+  if(q.type === 'mc'){
+    if(!a || !a.mc) return '';
+    const opt = q.options.find(o=>o.letter===a.mc);
+    return a.mc + (opt ? ') ' + opt.text : '');
+  }
+  return a && a.openHtml ? stripHtml(a.openHtml) : '';
+}
+
+function csvField(val){
+  const s = String(val == null ? '' : val);
+  return /["\n\r,;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function downloadAnswersCsv(){
+  const header = ['Kompetenzelement', 'Frage', 'Eigene Antwort', 'Antwortmöglichkeit', 'Ergänzende Informationen'];
+  const rows = [header];
+  for(const q of session.questions){
+    const ke = keMap.get(q.keKey);
+    rows.push([
+      keLabel(ke),
+      q.rawFrage != null ? q.rawFrage : q.stem,
+      ownAnswerText(q),
+      q.rawAntwort != null ? q.rawAntwort : (q.answer || ''),
+      q.info || ''
+    ]);
+  }
+  const csv = rows.map(r => r.map(csvField).join(',')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], {type: 'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `pmzert-antworten-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // sess is captured explicitly (not read from the closure) so that an in-flight
@@ -1704,7 +1758,7 @@ function buildQuestionsFromRows(rows){
     const antwort = cleanQuestionText(row[2] || '');
     const info = cleanQuestionText(row[3] || '');
     const isMc = OPTION_START_RE.test(frage) && ANSWER_MARKER_RE.test(antwort.trim());
-    const q = {id: qid, keCode, keName, keKey, info};
+    const q = {id: qid, keCode, keName, keKey, info, rawFrage: frage, rawAntwort: antwort};
     if(isMc){
       const parsed = parseMcQuestion(frage, antwort);
       if(parsed.options.length >= 2 && parsed.correct){
