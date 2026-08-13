@@ -63,16 +63,25 @@ button{font-family:inherit;cursor:pointer}
 .field{flex:1;min-width:180px}
 .field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px}
 .field input[type=number],.field input[type=text],.field input[type=password]{width:100%;padding:9px 10px;border:1px solid var(--grey);border-radius:6px;font-size:14px}
-.ke-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px 14px;max-height:280px;overflow:auto;padding:4px 2px}
-.ke-item{display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 2px}
-.ke-item input{margin:0}
+.ke-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:2px 14px;max-height:340px;overflow:auto;padding:4px 2px}
+.ke-item-wrap{display:flex;align-items:center;gap:2px;flex-wrap:wrap;padding:2px 0}
+.ke-item{display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 2px;flex:1;min-width:0}
+.ke-item input{margin:0;flex:0 0 auto}
 .ke-item .cnt{color:var(--muted);font-size:11.5px}
+.ke-more-btn{flex:0 0 auto;background:transparent;border:1px solid var(--grey);border-radius:5px;width:22px;height:22px;font-size:12px;color:var(--muted);line-height:1;padding:0}
+.ke-more-btn:hover{background:#eef1f5;color:var(--navy2)}
+.ke-weight-row{width:100%;padding:4px 2px 8px 30px;font-size:12px;color:var(--muted)}
+.ke-weight-row label{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ke-weight-row input[type=range]{width:110px;vertical-align:middle}
+.ke-weight-value{font-weight:700;color:var(--navy2);min-width:20px;display:inline-block}
 .toolbar-row{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap}
 .btn{border:none;border-radius:6px;padding:10px 18px;font-size:14px;font-weight:600}
 .btn-primary{background:var(--green);color:#fff}
 .btn-primary:hover{background:var(--green-d)}
 .btn-secondary{background:#e6e9ee;color:var(--navy2)}
 .btn-secondary:hover{background:#d9dee6}
+.btn-blue{background:var(--pm-blue);color:#fff}
+.btn-blue:hover{background:var(--pm-blue-d)}
 .btn-link{background:rgba(29,78,216,.08);color:var(--blue);padding:10px 18px;border-radius:6px;font-size:14px;font-weight:600;border:1px solid rgba(29,78,216,.15)}
 .btn-link:hover{background:rgba(29,78,216,.15)}
 .ke-filter-row{gap:6px}
@@ -274,33 +283,6 @@ input[type=range]{accent-color:var(--blue)}
     <div class="sub">Übungsplattform für das GPM Basiszertifikat im Projektmanagement · inoffiziell, zu Übungszwecken</div>
   </div>
 
-  <div class="rules-card">
-    <div class="rules-header">
-      <h3>Die wichtigsten Infos</h3>
-    </div>
-    <div class="rules-stats">
-      <div class="rule-stat">
-        <div class="rule-stat-num">11<span class="rule-stat-of">&nbsp;/&nbsp;14</span></div>
-        <div class="rule-stat-label">Kompetenzelemente müssen auf dem geforderten Niveau nachgewiesen werden</div>
-      </div>
-      <div class="rule-stat">
-        <div class="rule-stat-num">≥&nbsp;50%</div>
-        <div class="rule-stat-label">der Fragen je Kompetenzelement müssen richtig beantwortet sein, damit es zählt</div>
-      </div>
-      <div class="rule-stat">
-        <div class="rule-stat-num">61</div>
-        <div class="rule-stat-label">Fragen insgesamt — dieser Simulator zielt standardmäßig auf diese Zahl</div>
-      </div>
-    </div>
-    <ul class="rules-list">
-      <li>Multiple-Choice-Fragen werden automatisch ausgewertet.</li>
-      <li>Offene Fragen werden im Review mit Musterantwort angezeigt und von Ihnen — oder optional per KI — eingeschätzt.</li>
-      <li>Für eine aussagekräftige Einschätzung alle 14 offiziellen Kompetenzelemente auswählen.</li>
-      <li>Von den 61 Fragen sind laut Kursleitung üblicherweise 11-12 Multiple-Choice, der Rest offene Fragen
-        (siehe "MC %" oben, standardmäßig auf dieses Verhältnis eingestellt).</li>
-    </ul>
-  </div>
-
   <div class="warning-note hidden" id="manual-grading-note">
     <strong>Hinweis:</strong> Aktuell ist keine KI-Bewertung eingerichtet. Offene Fragen müssen daher
     <strong>manuell</strong> bewertet werden: Nach der Prüfung zeigt der Review-Modus zu jeder offenen Frage
@@ -350,7 +332,7 @@ input[type=range]{accent-color:var(--blue)}
       </details>
 
       <details class="config-section">
-        <summary><span>Kompetenzelemente konfigurieren</span><span class="config-section-count" id="ke-toggle-badge"></span></summary>
+        <summary><span>Kompetenzelemente bearbeiten</span><span class="config-section-count" id="ke-toggle-badge"></span></summary>
         <div class="config-section-body">
           <div class="toolbar-row ke-filter-row" style="margin-bottom:10px">
             <button class="btn-link" id="ke-all">Alle</button>
@@ -359,6 +341,9 @@ input[type=range]{accent-color:var(--blue)}
             <button class="btn-link" data-domain="Methoden und Technisches">Methoden und Technisches</button>
             <button class="btn-link" data-domain="Sonstige">Sonstige</button>
             <button class="btn-link" id="ke-none">Keine</button>
+          </div>
+          <div class="toolbar-row" style="margin-bottom:10px">
+            <button class="btn-link" id="ke-randomize">🎲 Gewichtung zufällig</button>
           </div>
           <div class="ke-grid" id="ke-grid"></div>
         </div>
@@ -402,8 +387,36 @@ input[type=range]{accent-color:var(--blue)}
 
     <div class="toolbar-row" style="margin-top:18px">
       <button class="btn btn-primary" id="start-btn" disabled>Prüfung starten</button>
+      <button class="btn btn-blue" id="rules-toggle-btn">Regeln anzeigen</button>
       <button class="btn btn-secondary" id="cfg-reset-btn">Konfiguration zurücksetzen</button>
     </div>
+  </div>
+
+  <div class="rules-card hidden" id="rules-card">
+    <div class="rules-header">
+      <h3>Die wichtigsten Infos</h3>
+    </div>
+    <div class="rules-stats">
+      <div class="rule-stat">
+        <div class="rule-stat-num">11<span class="rule-stat-of">&nbsp;/&nbsp;14</span></div>
+        <div class="rule-stat-label">Kompetenzelemente müssen auf dem geforderten Niveau nachgewiesen werden</div>
+      </div>
+      <div class="rule-stat">
+        <div class="rule-stat-num">≥&nbsp;50%</div>
+        <div class="rule-stat-label">der Fragen je Kompetenzelement müssen richtig beantwortet sein, damit es zählt</div>
+      </div>
+      <div class="rule-stat">
+        <div class="rule-stat-num">61</div>
+        <div class="rule-stat-label">Fragen insgesamt — dieser Simulator zielt standardmäßig auf diese Zahl</div>
+      </div>
+    </div>
+    <ul class="rules-list">
+      <li>Multiple-Choice-Fragen werden automatisch ausgewertet.</li>
+      <li>Offene Fragen werden im Review mit Musterantwort angezeigt und von Ihnen — oder optional per KI — eingeschätzt.</li>
+      <li>Für eine aussagekräftige Einschätzung alle 14 offiziellen Kompetenzelemente auswählen.</li>
+      <li>Von den 61 Fragen sind laut Kursleitung üblicherweise 11-12 Multiple-Choice, der Rest offene Fragen
+        (siehe "MC %" oben, standardmäßig auf dieses Verhältnis eingestellt).</li>
+    </ul>
   </div>
 
   <div class="gh-footer">
@@ -476,6 +489,7 @@ input[type=range]{accent-color:var(--blue)}
 let ALL_Q = [];
 let keMap = new Map();
 let KE_LIST = [];
+let keWeights = new Map(); // keKey -> weight (1-5, default 1 = equal share)
 
 // ---------- derive competence element list ----------
 function keSortKey(k){ return k.code ? k.code : 'zzzz_' + k.name; }
@@ -670,7 +684,8 @@ function persistConfig(){
       count: document.getElementById('cfg-count').value,
       time: document.getElementById('cfg-time').value,
       focusType: focusSlider.value,
-      keKeys: selectedKEKeys()
+      keKeys: selectedKEKeys(),
+      keWeights: Object.fromEntries(keWeights)
     }));
   } catch(e){ /* localStorage unavailable — persistence is a nice-to-have, not required */ }
 }
@@ -688,48 +703,99 @@ function applySavedScalarFields(){
 }
 function applySavedKeSelection(){
   const cfg = loadSavedConfig();
-  if(!cfg || !Array.isArray(cfg.keKeys)) return;
-  const keySet = new Set(cfg.keKeys);
-  grid.querySelectorAll('input[type=checkbox]').forEach(el=>{
-    el.checked = keySet.has(el.dataset.key);
-  });
+  if(!cfg) return;
+  if(Array.isArray(cfg.keKeys)){
+    const keySet = new Set(cfg.keKeys);
+    grid.querySelectorAll('input[type=checkbox]').forEach(el=>{
+      el.checked = keySet.has(el.dataset.key);
+    });
+  }
+  if(cfg.keWeights && typeof cfg.keWeights === 'object'){
+    grid.querySelectorAll('.ke-weight-input').forEach(input=>{
+      const saved = cfg.keWeights[input.dataset.key];
+      if(saved){
+        input.value = saved;
+        keWeights.set(input.dataset.key, saved);
+        const valEl = grid.querySelector(`.ke-weight-value[data-key-value="${input.dataset.key}"]`);
+        if(valEl) valEl.textContent = `${saved}×`;
+      }
+    });
+  }
 }
 
 // ---------- start screen: render KE checkboxes ----------
 const grid = document.getElementById('ke-grid');
 function renderKeGrid(){
   grid.innerHTML = '';
+  keWeights = new Map(KE_LIST.map(ke => [ke.key, 1]));
   for(const ke of KE_LIST){
-    const div = document.createElement('label');
-    div.className = 'ke-item';
-    div.innerHTML = `<input type="checkbox" data-key="${ke.key}" checked>
-      <span>${keLabel(ke)}</span> <span class="cnt">(${ke.count})</span>`;
-    grid.appendChild(div);
+    const wrap = document.createElement('div');
+    wrap.className = 'ke-item-wrap';
+    wrap.innerHTML = `
+      <label class="ke-item">
+        <input type="checkbox" data-key="${ke.key}" checked>
+        <span>${keLabel(ke)}</span> <span class="cnt">(${ke.count})</span>
+      </label>
+      <button type="button" class="ke-more-btn" data-key="${ke.key}" title="Gewichtung anpassen">⋯</button>
+      <div class="ke-weight-row hidden" data-key-row="${ke.key}">
+        <label>Gewichtung <span class="badge-note">(mehr = anteilig mehr Fragen aus diesem Thema)</span>:
+          <input type="range" min="1" max="5" step="1" value="1" class="ke-weight-input" data-key="${ke.key}">
+          <span class="ke-weight-value" data-key-value="${ke.key}">1×</span>
+        </label>
+      </div>`;
+    grid.appendChild(wrap);
   }
+  grid.querySelectorAll('.ke-more-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const row = grid.querySelector(`.ke-weight-row[data-key-row="${btn.dataset.key}"]`);
+      row.classList.toggle('hidden');
+    });
+  });
+  grid.querySelectorAll('.ke-weight-input').forEach(input=>{
+    input.addEventListener('input', ()=>{
+      const v = parseInt(input.value, 10);
+      keWeights.set(input.dataset.key, v);
+      grid.querySelector(`.ke-weight-value[data-key-value="${input.dataset.key}"]`).textContent = `${v}×`;
+      updateSummary();
+      persistConfig();
+    });
+  });
   applySavedKeSelection();
 }
+
+document.getElementById('ke-randomize').addEventListener('click', ()=>{
+  grid.querySelectorAll('.ke-weight-input').forEach(input=>{
+    const v = 1 + Math.floor(Math.random() * 5); // 1-5
+    input.value = v;
+    keWeights.set(input.dataset.key, v);
+    grid.querySelector(`.ke-weight-value[data-key-value="${input.dataset.key}"]`).textContent = `${v}×`;
+  });
+  updateSummary();
+  persistConfig();
+});
 
 function selectedKEKeys(){
   return Array.from(grid.querySelectorAll('input[type=checkbox]:checked')).map(el=>el.dataset.key);
 }
 
-// Distributes the configured total evenly across the selected competence
-// elements, one question per element per round, until the total is reached —
-// capped by how many questions actually exist for a given element.
+// Distributes the configured total across the selected competence elements
+// in proportion to their weight (default 1 = equal share), one "turn" per
+// round going to whichever selected element has served the smallest
+// count-so-far/weight ratio — capped by how many questions actually exist
+// for a given element.
 function allocateQuestionCounts(keys, total){
   const counts = new Map(keys.map(k=>[k, 0]));
   let remaining = total;
-  let progress = true;
-  while(remaining > 0 && progress){
-    progress = false;
+  while(remaining > 0){
+    let best = null, bestRatio = Infinity;
     for(const k of keys){
-      if(remaining <= 0) break;
-      if(counts.get(k) < keMap.get(k).count){
-        counts.set(k, counts.get(k) + 1);
-        remaining--;
-        progress = true;
-      }
+      if(counts.get(k) >= keMap.get(k).count) continue;
+      const ratio = counts.get(k) / (keWeights.get(k) || 1);
+      if(ratio < bestRatio){ bestRatio = ratio; best = k; }
     }
+    if(best === null) break;
+    counts.set(best, counts.get(best) + 1);
+    remaining--;
   }
   return counts;
 }
@@ -797,6 +863,14 @@ document.getElementById('cfg-reset-btn').addEventListener('click', ()=>{
   updateSummary();
   clearSavedConfig();
   // deliberately does not touch the saved Gemini API key
+});
+
+const rulesCard = document.getElementById('rules-card');
+const rulesToggleBtn = document.getElementById('rules-toggle-btn');
+rulesToggleBtn.addEventListener('click', ()=>{
+  const nowHidden = rulesCard.classList.toggle('hidden');
+  rulesToggleBtn.textContent = nowHidden ? 'Regeln anzeigen' : 'Regeln ausblenden';
+  if(!nowHidden) rulesCard.scrollIntoView({behavior: 'smooth', block: 'nearest'});
 });
 
 function shuffle(arr){
