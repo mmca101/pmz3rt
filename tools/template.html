@@ -1,0 +1,1295 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PM-ZERT Prüfungssimulator</title>
+<style>
+:root{
+  --navy:#152238; --navy2:#1c2f4d; --navy3:#24406b;
+  --green:#2f9e5b; --green-d:#217a45;
+  --blue:#1d4ed8; --blue-d:#173ea6;
+  --lightblue:#bfe0ff; --lightblue-d:#8fc4f0;
+  --grey:#c9cfd8; --grey-d:#9aa4b2;
+  --bg:#eef1f5; --card:#ffffff; --text:#1c2430; --muted:#6b7686;
+  --danger:#c0392b;
+  --amber:#b5680d; --amber-d:#8f5209;
+  --radius:8px;
+  font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);height:100%}
+button{font-family:inherit;cursor:pointer}
+.hidden{display:none !important}
+
+/* ---------- Start screen ---------- */
+#screen-start{max-width:820px;margin:0 auto;padding:40px 20px 80px}
+.start-header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.logo-dot{width:14px;height:14px;border-radius:3px;background:var(--green)}
+.start-header h1{font-size:22px;margin:0}
+.start-header .sub{color:var(--muted);font-size:14px;margin-top:2px}
+.card{background:var(--card);border-radius:var(--radius);padding:22px 24px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-top:18px}
+.card-row{display:flex;gap:18px;flex-wrap:wrap}
+.card-row .card{flex:1;min-width:320px}
+.card h2{font-size:15px;margin:0 0 12px;color:var(--navy2)}
+.field-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.field{flex:1;min-width:180px}
+.field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px}
+.field input[type=number],.field input[type=text],.field input[type=password]{width:100%;padding:9px 10px;border:1px solid var(--grey);border-radius:6px;font-size:14px}
+.ke-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px 14px;max-height:280px;overflow:auto;padding:4px 2px}
+.ke-item{display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 2px}
+.ke-item input{margin:0}
+.ke-item .cnt{color:var(--muted);font-size:11.5px}
+.toolbar-row{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap}
+.btn{border:none;border-radius:6px;padding:10px 18px;font-size:14px;font-weight:600}
+.btn-primary{background:var(--green);color:#fff}
+.btn-primary:hover{background:var(--green-d)}
+.btn-secondary{background:#e6e9ee;color:var(--navy2)}
+.btn-secondary:hover{background:#d9dee6}
+.btn-link{background:rgba(29,78,216,.08);color:var(--blue);padding:10px 18px;border-radius:6px;font-size:14px;font-weight:600;border:1px solid rgba(29,78,216,.15)}
+.btn-link:hover{background:rgba(29,78,216,.15)}
+.ke-filter-row{gap:6px}
+.ke-filter-row .btn-link{padding:5px 10px;font-size:12px;flex:1;text-align:center;white-space:nowrap}
+.small-note{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5}
+.small-note.status-ok{color:var(--green-d);font-weight:600}
+.small-note.status-bad{color:var(--danger);font-weight:600}
+.summary-line{font-size:13px;color:var(--muted);margin-bottom:10px}
+.badge-note{font-size:11px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0}
+.warning-note{background:#fff6e9;border:1px solid var(--amber);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--amber-d);line-height:1.5;margin-top:12px}
+.rules-card{background:#eaf1ff;border:1px solid #b9d0f5;border-radius:10px;padding:20px 22px;margin-top:18px}
+.rules-header{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.rules-header h3{margin:0;font-size:15px;color:var(--blue-d)}
+.rules-source{font-size:11.5px;color:var(--muted)}
+.rules-stats{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.rule-stat{flex:1;min-width:170px;background:#fff;border-radius:8px;padding:12px 16px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.rule-stat-num{font-size:26px;font-weight:800;color:var(--blue-d);line-height:1}
+.rule-stat-num .rule-stat-of{font-size:14px;font-weight:600;color:var(--muted)}
+.rule-stat-label{font-size:12px;color:var(--text);margin-top:5px;line-height:1.4}
+.rules-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.rules-list li{font-size:12px;color:var(--blue-d);line-height:1.5;padding-left:16px;position:relative}
+.rules-list li::before{content:'›';position:absolute;left:0;font-weight:700}
+input[type=range]{accent-color:var(--blue)}
+
+/* ---------- Exam screen ---------- */
+#screen-exam{display:flex;flex-direction:column;height:100vh}
+.topbar{background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:10px 18px;flex:0 0 auto}
+.topbar .brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
+.topbar .brand .logo-dot{background:var(--green)}
+.topbar .timer{font-variant-numeric:tabular-nums;font-weight:700;font-size:15px;background:rgba(255,255,255,.08);padding:6px 12px;border-radius:6px}
+.topbar .timer.low{background:var(--danger)}
+.topbar .end-btn{background:transparent;border:1px solid rgba(255,255,255,.4);color:#fff;padding:7px 14px;border-radius:6px;font-size:13px}
+.topbar .end-btn:hover{background:rgba(255,255,255,.12)}
+
+.navbar{background:var(--blue);color:#fff;display:flex;align-items:stretch;flex:0 0 auto}
+.navbar button.arrow{background:transparent;border:none;color:#fff;font-size:18px;padding:0 20px;font-weight:700}
+.navbar button.arrow:disabled{opacity:.35;cursor:default}
+.navbar button.arrow:hover:not(:disabled){background:rgba(255,255,255,.12)}
+.navbar .navcenter{flex:1;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;letter-spacing:.3px}
+.navbar .bookmark-btn{background:transparent;border:none;color:#fff;font-size:13px;font-weight:600;padding:0 16px;display:flex;align-items:center;gap:7px}
+.navbar .bookmark-btn:hover{background:rgba(255,255,255,.12)}
+.navbar .bookmark-btn.active{color:#ffd75e}
+.navbar .bookmark-btn.active svg path{fill:#ffd75e}
+
+.body-wrap{flex:1;display:flex;min-height:0}
+.sidebar{width:250px;flex:0 0 auto;background:var(--navy2);color:#fff;overflow-y:auto;padding:14px 0}
+.sidebar .ov-title{display:flex;align-items:center;justify-content:space-between;padding:0 16px 10px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#c7d1e0;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:8px}
+.sidebar .group{margin-bottom:6px}
+.sidebar .group-name{padding:8px 16px 4px;font-size:11.5px;font-weight:700;color:#9db0cf;text-transform:uppercase;letter-spacing:.3px}
+.circles{display:flex;flex-wrap:wrap;gap:10px;padding:6px 16px 10px}
+.circle{width:30px;height:30px;border-radius:50%;background:var(--grey-d);color:#132;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;border:none;color:#1c2430}
+.circle.answered{background:var(--green);color:#fff}
+.circle.bookmarked{background:var(--lightblue);color:#173ea6}
+.circle.current{background:var(--blue-d);color:#fff;box-shadow:0 0 0 2px #ffd75e inset}
+
+.workarea{flex:1;overflow-y:auto;padding:26px 34px 60px;background:var(--bg)}
+.q-info-row{display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+.q-info-box{flex:1;min-width:220px;background:#dde8f7;border:1px solid #c4d6f0;border-radius:6px;padding:10px 14px}
+.q-info-box .k{font-size:11.5px;font-weight:700;color:var(--blue-d);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px}
+.q-info-box .v{font-size:13.5px;color:var(--navy2)}
+.q-heading{font-size:13px;font-weight:700;color:var(--navy2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px}
+.q-stem{background:var(--card);border-radius:var(--radius);padding:18px 20px;font-size:15px;line-height:1.6;white-space:pre-wrap;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:20px}
+
+.options{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
+.option{display:flex;align-items:flex-start;gap:12px;background:var(--card);border:2px solid #e1e5eb;border-radius:8px;padding:12px 16px;cursor:pointer;font-size:14.5px;line-height:1.5}
+.option:hover{border-color:var(--blue)}
+.option.selected{border-color:var(--blue);background:#eaf1ff}
+.option .letter{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:#e6e9ee;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px}
+.option.selected .letter{background:var(--blue);color:#fff}
+
+.answer-area{background:var(--card);border-radius:var(--radius);box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;margin-bottom:16px}
+.rte-toolbar{display:flex;gap:2px;padding:6px 8px;border-bottom:1px solid #e6e9ee;background:#fafbfc;flex-wrap:wrap}
+.rte-toolbar button{border:1px solid transparent;background:transparent;border-radius:4px;width:30px;height:28px;font-size:13px;font-weight:700;color:var(--navy2)}
+.rte-toolbar button:hover{background:#e6e9ee}
+.rte-toolbar .sep{width:1px;background:#e0e3e8;margin:2px 4px}
+.rte{min-height:160px;padding:14px 16px;font-size:14.5px;line-height:1.6;outline:none}
+.rte:empty:before{content:attr(data-placeholder);color:var(--muted)}
+
+.bottom-nav{display:flex;justify-content:space-between;margin-top:6px}
+
+/* ---------- Modal ---------- */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,16,30,.55);display:flex;align-items:center;justify-content:center;z-index:50}
+.modal{background:#fff;border-radius:10px;padding:26px 28px;max-width:420px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+.modal h3{margin:0 0 10px;font-size:16px}
+.modal p{font-size:13.5px;color:var(--muted);line-height:1.5;margin:0 0 20px}
+.modal .actions{display:flex;justify-content:flex-end;gap:10px}
+
+.finish-panel{max-width:560px;margin:60px auto;background:var(--card);border-radius:10px;padding:36px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.finish-panel h2{margin-top:0}
+.finish-panel p{color:var(--muted);font-size:14px;line-height:1.6}
+
+/* ---------- Results screen ---------- */
+#screen-results{max-width:960px;margin:0 auto;padding:36px 20px 80px}
+.verdict{padding:22px 26px;border-radius:10px;color:#fff;margin-bottom:24px}
+.verdict.pass{background:var(--green)}
+.verdict.fail{background:var(--danger)}
+.verdict.pending{background:var(--amber)}
+.verdict h2{margin:0 0 6px;font-size:20px}
+.verdict p{margin:0;font-size:13.5px;opacity:.95}
+.ke-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:28px}
+.ke-card{background:var(--card);border-radius:8px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.06);border-left:5px solid var(--grey-d)}
+.ke-card.pass{border-left-color:var(--green)}
+.ke-card.fail{border-left-color:var(--danger)}
+.ke-card.pending{border-left-color:var(--amber)}
+.ke-card .name{font-weight:700;font-size:13.5px;margin-bottom:4px}
+.ke-card .stat{font-size:12.5px;color:var(--muted)}
+.review-item{background:var(--card);border-radius:8px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}
+.review-item .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase}
+.tag.ok{background:#dcf5e6;color:var(--green-d)}
+.tag.bad{background:#fbe1de;color:var(--danger)}
+.tag.pending{background:#eee;color:#666}
+.review-item summary{list-style:none;cursor:pointer;padding:14px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.review-item summary::-webkit-details-marker{display:none}
+.review-item summary::before{content:'▸';color:var(--muted);font-size:11px;flex:0 0 auto}
+.review-item details[open] summary::before{content:'▾'}
+.review-item summary:hover{background:#fafbfc}
+.review-item .rv-head{font-size:11.5px;color:var(--muted);font-weight:700;text-transform:uppercase;white-space:nowrap;flex:0 0 auto}
+.review-item .rv-preview{font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:80px}
+.review-item details[open] .rv-preview{display:none}
+.review-item .rv-body{padding:6px 18px 16px;border-top:1px solid #eef1f5}
+.review-item .stem{font-size:14px;margin-bottom:8px;white-space:pre-wrap}
+.review-item .rowlbl{font-size:11.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-top:8px}
+.review-item .rowval{font-size:13.5px;line-height:1.5;white-space:pre-wrap}
+.self-grade-btns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.self-grade-btns button{border:1px solid var(--grey);background:#fff;border-radius:6px;padding:6px 12px;font-size:12.5px}
+.self-grade-btns button.chosen-ok{background:var(--green);color:#fff;border-color:var(--green)}
+.self-grade-btns button.chosen-bad{background:var(--danger);color:#fff;border-color:var(--danger)}
+.self-grade-btns button.ai-grade-btn{border-color:var(--blue);color:var(--blue-d)}
+.self-grade-btns button.ai-grade-btn:disabled{opacity:.6;cursor:default}
+.ai-feedback{margin-top:8px;padding:8px 10px;background:#eef1f5;border-left:3px solid var(--blue);border-radius:4px;font-size:13px;line-height:1.5}
+.ai-feedback.error{border-left-color:var(--danger);color:var(--danger)}
+.filter-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.filter-row button{border:1px solid var(--grey);background:#fff;padding:6px 14px;border-radius:16px;font-size:12.5px}
+.filter-row button.active{background:var(--navy2);color:#fff;border-color:var(--navy2)}
+</style>
+</head>
+<body>
+
+<!-- ================= START SCREEN ================= -->
+<div id="screen-start">
+  <div class="start-header">
+    <div class="logo-dot"></div>
+    <div>
+      <h1>PM-ZERT Prüfungssimulator</h1>
+      <div class="sub">Übungsplattform für das GPM Basiszertifikat im Projektmanagement · inoffiziell, zu Übungszwecken</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Prüfung konfigurieren</h2>
+    <div class="field-row">
+      <div class="field">
+        <label>Fragen gesamt <span class="badge-note">(lt. Kursleitung immer 61)</span></label>
+        <input type="number" id="cfg-count" min="1" max="500" value="61">
+      </div>
+      <div class="field">
+        <label>Bearbeitungszeit (Minuten)</label>
+        <input type="number" id="cfg-time" min="5" max="240" value="90">
+      </div>
+      <div class="field">
+        <label>Kandidat/in (optional)</label>
+        <input type="text" id="cfg-name" placeholder="Name">
+      </div>
+    </div>
+    <div class="summary-line" id="cfg-summary">wird berechnet…</div>
+  </div>
+
+  <div class="toolbar-row">
+    <button class="btn btn-primary" id="start-btn">Prüfung starten</button>
+    <button class="btn btn-secondary" id="cfg-reset-btn">Konfiguration zurücksetzen</button>
+  </div>
+
+  <div class="rules-card">
+    <div class="rules-header">
+      <h3>Bestehensregel</h3>
+      <span class="rules-source">lt. Prüfungsordnung GPM Basiszertifikat</span>
+    </div>
+    <div class="rules-stats">
+      <div class="rule-stat">
+        <div class="rule-stat-num">11<span class="rule-stat-of">&nbsp;/&nbsp;14</span></div>
+        <div class="rule-stat-label">Kompetenzelemente müssen auf dem geforderten Niveau nachgewiesen werden</div>
+      </div>
+      <div class="rule-stat">
+        <div class="rule-stat-num">≥&nbsp;50%</div>
+        <div class="rule-stat-label">der Fragen je Kompetenzelement müssen richtig beantwortet sein, damit es zählt</div>
+      </div>
+      <div class="rule-stat">
+        <div class="rule-stat-num">61</div>
+        <div class="rule-stat-label">Fragen insgesamt lt. Kursleitung — dieser Simulator zielt standardmäßig auf diese Zahl</div>
+      </div>
+    </div>
+    <ul class="rules-list">
+      <li>Multiple-Choice-Fragen werden automatisch ausgewertet.</li>
+      <li>Offene Fragen werden im Review mit Musterantwort angezeigt und von Ihnen — oder optional per KI — eingeschätzt.</li>
+      <li>Für eine aussagekräftige Einschätzung alle 14 offiziellen Kompetenzelemente auswählen.</li>
+      <li>PM-ZERT selbst veröffentlicht die Gesamtfragenzahl nicht offiziell; laut Auskunft der Kursleitung sind es
+        aber immer genau 61 Fragen. Quellen zufolge kommen dabei etwa gleich viele Multiple-Choice- wie offene
+        Fragen vor (siehe "Fokus-Typ"-Regler unten).</li>
+    </ul>
+  </div>
+
+  <div class="warning-note hidden" id="manual-grading-note">
+    <strong>Hinweis:</strong> Aktuell ist keine KI-Bewertung eingerichtet. Offene Fragen müssen daher
+    <strong>manuell</strong> bewertet werden: Nach der Prüfung zeigt der Review-Modus zu jeder offenen Frage
+    die Musterantwort an, und Sie vergleichen diese selbst mit Ihrer eigenen Antwort und markieren per Klick,
+    ob sie inhaltlich richtig war.
+    <div style="margin-top:8px"><a href="#ai-key-card" class="btn-link" style="display:inline-block;text-decoration:none">KI-Bewertung einrichten →</a></div>
+  </div>
+
+  <div class="card">
+    <h2>Kompetenzelemente auswählen</h2>
+    <div class="toolbar-row ke-filter-row" style="margin-bottom:10px">
+      <button class="btn-link" id="ke-all">Alle</button>
+      <button class="btn-link" data-domain="Kontext">Kontext</button>
+      <button class="btn-link" data-domain="Persönliches und Soziales">Persönliches und Soziales</button>
+      <button class="btn-link" data-domain="Methoden und Technisches">Methoden und Technisches</button>
+      <button class="btn-link" data-domain="Sonstige">Sonstige</button>
+      <button class="btn-link" id="ke-none">Keine</button>
+    </div>
+    <div class="ke-grid" id="ke-grid"></div>
+  </div>
+
+  <div class="card-row">
+    <div class="card">
+      <h2>Fokus-Typ <span class="badge-note">(kein Feature der echten Prüfungsplattform)</span></h2>
+      <div class="field" style="margin-bottom:4px">
+        <label>Anteil Multiple-Choice vs. Freitext je Kompetenzelement: <strong id="focus-type-label">50% Multiple Choice / 50% Freitext</strong></label>
+        <input type="range" id="cfg-focus-type" min="0" max="100" step="5" value="50" style="width:100%">
+      </div>
+      <div class="warning-note">
+        <strong>Wichtiger Hinweis:</strong> Dieser Regler ist eine reine Übungsfunktion dieses Simulators und
+        existiert so nicht im echten PM-ZERT-Zertifizierungsportal. Die echte Prüfung wird höchstwahrscheinlich
+        einen etwa <strong>50/50-Split</strong> zwischen Multiple-Choice- und offenen Fragen haben. Nutzen Sie
+        den Regler gezielt, um einen Fragetyp zu trainieren — für eine realistische Prüfungssimulation den
+        Standardwert bei 50 % belassen.
+      </div>
+    </div>
+
+    <div class="card" id="ai-key-card">
+      <h2>KI-Bewertung für offene Fragen (optional)</h2>
+      <div class="field">
+        <label>Google Gemini API-Key</label>
+        <input type="password" id="cfg-ai-key" placeholder="Einfügen, um KI-Bewertung zu aktivieren">
+      </div>
+      <div class="toolbar-row">
+        <button class="btn btn-primary" id="ai-key-save">Speichern &amp; testen</button>
+        <button class="btn btn-secondary" id="ai-key-clear">Entfernen</button>
+      </div>
+      <div class="small-note" id="ai-key-status" style="margin-top:0"></div>
+      <div class="small-note">
+        Kostenlos auf <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener">aistudio.google.com/api-keys</a>
+        erstellbar (Google-Konto nötig, keine Zahlungsmethode). Der Key wird ausschließlich lokal in Ihrem
+        Browser gespeichert (localStorage) und bei Bewertung direkt von Ihrem Browser an Google gesendet — er
+        läuft über keinen Server dieser Anwendung. Ohne Key müssen die offenen Fragen zur Musterlösung selbst
+        abgeglichen und abgeschätzt werden!
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= EXAM SCREEN ================= -->
+<div id="screen-exam" class="hidden">
+  <div class="topbar">
+    <div class="brand"><span class="logo-dot"></span> PM-ZERT Prüfung</div>
+    <div class="timer" id="timer-display">90:00</div>
+    <button class="end-btn" id="end-exam-btn">PRÜFUNG BEENDEN</button>
+  </div>
+  <div class="navbar">
+    <button class="arrow" id="prev-btn">&#8592;</button>
+    <div class="navcenter" id="nav-center">Frage 1</div>
+    <button class="bookmark-btn" id="bookmark-btn" title="Mit Lesezeichen markieren">
+      <svg id="bookmark-icon" width="15" height="17" viewBox="0 0 15 17" xmlns="http://www.w3.org/2000/svg">
+        <path d="M1 1h13v15l-6.5-4L1 16V1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      </svg>
+      <span>Lesezeichen</span>
+    </button>
+    <button class="arrow" id="next-btn">&#8594;</button>
+  </div>
+  <div class="body-wrap">
+    <div class="sidebar">
+      <div class="ov-title"><span>Übersicht</span></div>
+      <div id="ov-groups"></div>
+    </div>
+    <div class="workarea" id="workarea">
+      <!-- filled by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- Finish confirm modal -->
+<div id="modal-finish" class="modal-overlay hidden">
+  <div class="modal">
+    <h3>Prüfung beenden?</h3>
+    <p>Nach dem Beenden kann die Prüfung nicht fortgesetzt werden. Unbeantwortete Fragen bleiben offen. Möchten Sie wirklich abschließen?</p>
+    <div class="actions">
+      <button class="btn btn-secondary" id="modal-cancel">Abbrechen</button>
+      <button class="btn btn-primary" id="modal-confirm">OK, beenden</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= RESULTS SCREEN ================= -->
+<div id="screen-results" class="hidden"></div>
+
+<script id="questions-data" type="application/json">__QUESTIONS_JSON__</script>
+<script>
+(function(){
+"use strict";
+
+const ALL_Q = JSON.parse(document.getElementById('questions-data').textContent);
+
+// ---------- derive competence element list ----------
+function keSortKey(k){ return k.code ? k.code : 'zzzz_' + k.name; }
+const keMap = new Map();
+for(const q of ALL_Q){
+  if(!keMap.has(q.keKey)) keMap.set(q.keKey, {key:q.keKey, code:q.keCode, name:q.keName, count:0});
+  keMap.get(q.keKey).count++;
+}
+const KE_LIST = Array.from(keMap.values()).sort((a,b)=> keSortKey(a).localeCompare(keSortKey(b)));
+
+// ---------- ICB4 Kompetenzbereiche (domain grouping for the exam sidebar) ----------
+const DOMAIN_ORDER = ['Kontext', 'Persönliches und Soziales', 'Methoden und Technisches', 'Sonstige'];
+function domainForKe(ke){
+  if(!ke.code) return 'Sonstige';
+  if(ke.code.startsWith('04.03')) return 'Kontext';
+  if(ke.code.startsWith('04.04')) return 'Persönliches und Soziales';
+  if(ke.code.startsWith('04.05')) return 'Methoden und Technisches';
+  return 'Sonstige';
+}
+
+function keLabel(ke){ return ke.code ? (ke.code + ' ' + ke.name) : ke.name; }
+
+// ---------- optional AI grading (Google Gemini, user-supplied free API key) ----------
+const AI_KEY_STORAGE = 'pmzert_gemini_key';
+const aiKeyInput = document.getElementById('cfg-ai-key');
+const aiKeyStatus = document.getElementById('ai-key-status');
+
+function getAiKey(){ return (localStorage.getItem(AI_KEY_STORAGE) || '').trim(); }
+function setAiKeyStatus(text, kind){
+  aiKeyStatus.textContent = text;
+  aiKeyStatus.classList.remove('status-ok', 'status-bad');
+  if(kind === 'ok') aiKeyStatus.classList.add('status-ok');
+  else if(kind === 'bad') aiKeyStatus.classList.add('status-bad');
+}
+const manualGradingNote = document.getElementById('manual-grading-note');
+function refreshAiKeyStatus(){
+  const key = getAiKey();
+  setAiKeyStatus(key ? '✓ Key gespeichert – KI-Bewertung ist im Review verfügbar.' : '', null);
+  manualGradingNote.classList.toggle('hidden', !!key);
+}
+aiKeyInput.value = getAiKey();
+refreshAiKeyStatus();
+
+// Validated eagerly on save (rather than silently on every keystroke) so an
+// invalid or mistyped key is caught here, not discovered only after a full
+// practice exam when grading finally runs.
+async function testGeminiKey(key){
+  try{
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(key));
+    if(res.ok) return {ok: true};
+    let message = 'HTTP ' + res.status;
+    try{
+      const body = await res.json();
+      if(body && body.error && body.error.message) message = body.error.message;
+    } catch(e){ /* ignore unparsable error body */ }
+    return {ok: false, message};
+  } catch(err){
+    return {ok: false, message: (err && err.message) || 'Netzwerkfehler'};
+  }
+}
+
+const aiKeySaveBtn = document.getElementById('ai-key-save');
+aiKeySaveBtn.addEventListener('click', async ()=>{
+  const key = aiKeyInput.value.trim();
+  if(!key){
+    localStorage.removeItem(AI_KEY_STORAGE);
+    setAiKeyStatus('Kein Key eingegeben.', null);
+    manualGradingNote.classList.remove('hidden');
+    return;
+  }
+  aiKeySaveBtn.disabled = true;
+  aiKeySaveBtn.textContent = 'Prüfe…';
+  setAiKeyStatus('Key wird geprüft…', null);
+  const result = await testGeminiKey(key);
+  aiKeySaveBtn.disabled = false;
+  aiKeySaveBtn.textContent = 'Speichern & testen';
+  if(result.ok){
+    localStorage.setItem(AI_KEY_STORAGE, key);
+    setAiKeyStatus('✓ Key gültig und gespeichert – KI-Bewertung ist im Review verfügbar.', 'ok');
+    manualGradingNote.classList.add('hidden');
+  } else {
+    localStorage.removeItem(AI_KEY_STORAGE); // don't leave a known-bad key active
+    setAiKeyStatus('✗ Key ungültig: ' + result.message, 'bad');
+    manualGradingNote.classList.remove('hidden');
+  }
+});
+aiKeyInput.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){ e.preventDefault(); aiKeySaveBtn.click(); }
+});
+document.getElementById('ai-key-clear').addEventListener('click', ()=>{
+  localStorage.removeItem(AI_KEY_STORAGE);
+  aiKeyInput.value = '';
+  refreshAiKeyStatus();
+});
+
+function stripHtml(html){
+  const d = document.createElement('div');
+  d.innerHTML = html || '';
+  return d.textContent.trim();
+}
+
+async function aiGradeOpenQuestion(q, candidateText){
+  const apiKey = getAiKey();
+  if(!apiKey) throw new Error('Kein API-Key hinterlegt.');
+  const prompt = 'Du bist Prüfer/in für die GPM/PM-ZERT Basiszertifikat-Prüfung im Projektmanagement (ICB4).\n' +
+    'Bewerte, ob die Antwort des Kandidaten inhaltlich der Musterantwort entspricht. Die Kernaussagen müssen ' +
+    'stimmen, eine wortgleiche Formulierung ist nicht nötig. Sei bei der Bewertung fair, aber nicht nachlässig.\n\n' +
+    'Frage: ' + q.stem + '\n\n' +
+    'Musterantwort: ' + q.answer + '\n' +
+    (q.info ? ('Zusatzinfo: ' + q.info + '\n') : '') +
+    '\nAntwort des Kandidaten: ' + (candidateText || '(keine Antwort abgegeben)') +
+    '\n\nAntworte AUSSCHLIESSLICH mit kompaktem JSON, ohne Markdown-Codeblock, in diesem Format:\n' +
+    '{"correct": true oder false, "feedback": "ein bis zwei Sätze Begründung auf Deutsch"}';
+
+  const res = await fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(apiKey),
+    {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({contents: [{parts: [{text: prompt}]}]})
+    }
+  );
+  if(!res.ok){
+    const errBody = await res.text().catch(()=> '');
+    throw new Error('API-Fehler ' + res.status + (errBody ? (': ' + errBody.slice(0,200)) : ''));
+  }
+  const data = await res.json();
+  const text = (data.candidates && data.candidates[0] && data.candidates[0].content &&
+    data.candidates[0].content.parts && data.candidates[0].content.parts[0] &&
+    data.candidates[0].content.parts[0].text) || '';
+  const cleaned = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+  let parsed;
+  try{ parsed = JSON.parse(cleaned); }
+  catch(e){ throw new Error('Antwort der KI konnte nicht gelesen werden.'); }
+  return {correct: !!parsed.correct, feedback: String(parsed.feedback || '').trim()};
+}
+
+// ---------- start screen: render KE checkboxes ----------
+const grid = document.getElementById('ke-grid');
+for(const ke of KE_LIST){
+  const div = document.createElement('label');
+  div.className = 'ke-item';
+  div.innerHTML = `<input type="checkbox" data-key="${ke.key}" checked>
+    <span>${keLabel(ke)}</span> <span class="cnt">(${ke.count})</span>`;
+  grid.appendChild(div);
+}
+
+function selectedKEKeys(){
+  return Array.from(grid.querySelectorAll('input[type=checkbox]:checked')).map(el=>el.dataset.key);
+}
+
+// Distributes the configured total evenly across the selected competence
+// elements, one question per element per round, until the total is reached —
+// capped by how many questions actually exist for a given element.
+function allocateQuestionCounts(keys, total){
+  const counts = new Map(keys.map(k=>[k, 0]));
+  let remaining = total;
+  let progress = true;
+  while(remaining > 0 && progress){
+    progress = false;
+    for(const k of keys){
+      if(remaining <= 0) break;
+      if(counts.get(k) < keMap.get(k).count){
+        counts.set(k, counts.get(k) + 1);
+        remaining--;
+        progress = true;
+      }
+    }
+  }
+  return counts;
+}
+
+function updateSummary(){
+  const total = parseInt(document.getElementById('cfg-count').value,10) || 1;
+  const keys = selectedKEKeys();
+  const counts = allocateQuestionCounts(keys, total);
+  let actualTotal = 0;
+  for(const k of keys) actualTotal += counts.get(k);
+  const shortfall = actualTotal < total ? ` — Fragenpool der Auswahl reicht nur für ${actualTotal}` : '';
+  document.getElementById('cfg-summary').textContent =
+    `${keys.length} Kompetenzelement(e) ausgewählt · ${actualTotal} Fragen in dieser Prüfung${shortfall}.`;
+}
+grid.addEventListener('change', updateSummary);
+document.getElementById('cfg-count').addEventListener('input', updateSummary);
+document.getElementById('ke-all').addEventListener('click', ()=>{
+  grid.querySelectorAll('input').forEach(el=>el.checked=true); updateSummary();
+});
+document.getElementById('ke-none').addEventListener('click', ()=>{
+  grid.querySelectorAll('input').forEach(el=>el.checked=false); updateSummary();
+});
+document.querySelectorAll('button[data-domain]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    grid.querySelectorAll('input').forEach(el=>{
+      const ke = keMap.get(el.dataset.key);
+      el.checked = domainForKe(ke) === btn.dataset.domain;
+    });
+    updateSummary();
+  });
+});
+updateSummary();
+
+const focusSlider = document.getElementById('cfg-focus-type');
+const focusLabel = document.getElementById('focus-type-label');
+function updateFocusLabel(){
+  const v = parseInt(focusSlider.value, 10);
+  focusLabel.textContent = `${v}% Multiple Choice / ${100 - v}% Freitext`;
+}
+focusSlider.addEventListener('input', updateFocusLabel);
+updateFocusLabel();
+
+document.getElementById('cfg-reset-btn').addEventListener('click', ()=>{
+  document.getElementById('cfg-count').value = '61';
+  document.getElementById('cfg-time').value = '90';
+  document.getElementById('cfg-name').value = '';
+  grid.querySelectorAll('input').forEach(el=>el.checked=true);
+  focusSlider.value = '50';
+  updateFocusLabel();
+  updateSummary();
+  // deliberately does not touch the saved Gemini API key
+});
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+// ---------- exam state ----------
+let session = null; // {questions:[...], answers:Map, bookmarks:Set, timeMinutes, startedAt, finished}
+let currentIndex = 0;
+let timerHandle = null;
+let secondsLeft = 0;
+
+document.getElementById('start-btn').addEventListener('click', startExam);
+
+function startExam(){
+  const totalQuestions = parseInt(document.getElementById('cfg-count').value,10) || 1;
+  const timeMinutes = parseInt(document.getElementById('cfg-time').value,10) || 90;
+  const mcPercent = parseInt(focusSlider.value, 10);
+  const keys = selectedKEKeys();
+  if(keys.length === 0){ alert('Bitte mindestens ein Kompetenzelement auswählen.'); return; }
+  const keCounts = allocateQuestionCounts(keys, totalQuestions);
+
+  const byKe = new Map();
+  for(const q of ALL_Q){
+    if(!byKe.has(q.keKey)) byKe.set(q.keKey, []);
+    byKe.get(q.keKey).push(q);
+  }
+
+  // PM-ZERT exams reportedly mix roughly equal numbers of multiple-choice and
+  // open questions (no official per-KE breakdown is published). The "Fokus-Typ"
+  // slider (a practice-only feature, not part of the real portal) lets the
+  // split be shifted away from that 50/50 default for targeted training.
+  // Questions are ordered by Kompetenzbereich (domain) so the sidebar overview
+  // numbers stay sequential within each visual group instead of jumping around.
+  const keysByDomain = new Map();
+  for(const k of keys){
+    const domain = domainForKe(keMap.get(k));
+    if(!keysByDomain.has(domain)) keysByDomain.set(domain, []);
+    keysByDomain.get(domain).push(k);
+  }
+
+  let selected = [];
+  for(const domain of DOMAIN_ORDER){
+    const domainKeys = keysByDomain.get(domain);
+    if(!domainKeys) continue;
+    let domainQuestions = [];
+    for(const k of domainKeys){
+      const count = keCounts.get(k);
+      if(count === 0) continue;
+      const pool = byKe.get(k) || [];
+      const mcPool = shuffle(pool.filter(q => q.type === 'mc'));
+      const openPool = shuffle(pool.filter(q => q.type === 'open'));
+      const mcWant = Math.round(count * mcPercent / 100);
+      const openWant = count - mcWant;
+      let mcTake = mcPool.slice(0, mcWant);
+      let openTake = openPool.slice(0, openWant);
+      let shortfall = count - mcTake.length - openTake.length;
+      if(shortfall > 0){
+        openTake = openTake.concat(openPool.slice(openTake.length, openTake.length + shortfall));
+        shortfall = count - mcTake.length - openTake.length;
+      }
+      if(shortfall > 0){
+        mcTake = mcTake.concat(mcPool.slice(mcTake.length, mcTake.length + shortfall));
+      }
+      domainQuestions = domainQuestions.concat(mcTake, openTake);
+    }
+    selected = selected.concat(shuffle(domainQuestions));
+  }
+
+  session = {
+    questions: selected,
+    answers: new Map(),   // id -> { mc: letter|null, openHtml: string }
+    bookmarks: new Set(),
+    selfGrade: new Map(), // id -> true/false (open questions review)
+    aiFeedback: new Map(), // id -> {feedback, error} from AI grading
+    aiAutoRan: false,
+    aiGradingRunning: false,
+    timeMinutes,
+    finished: false,
+    candidateName: document.getElementById('cfg-name').value.trim()
+  };
+  currentIndex = 0;
+  secondsLeft = timeMinutes * 60;
+
+  document.getElementById('screen-start').classList.add('hidden');
+  document.getElementById('screen-exam').classList.remove('hidden');
+
+  renderOverview();
+  renderQuestion();
+  startTimer();
+}
+
+function startTimer(){
+  clearInterval(timerHandle);
+  updateTimerDisplay();
+  timerHandle = setInterval(()=>{
+    secondsLeft--;
+    updateTimerDisplay();
+    if(secondsLeft <= 0){
+      clearInterval(timerHandle);
+      finishExam();
+    }
+  }, 1000);
+}
+function updateTimerDisplay(){
+  const m = Math.max(0,Math.floor(secondsLeft/60));
+  const s = Math.max(0,secondsLeft%60);
+  const el = document.getElementById('timer-display');
+  el.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  el.classList.toggle('low', secondsLeft <= 300);
+}
+
+function questionStatus(q){
+  const a = session.answers.get(q.id);
+  if(q.type === 'mc') return !!(a && a.mc);
+  return !!(a && a.openHtml && a.openHtml.replace(/<[^>]*>/g,'').trim().length>0);
+}
+
+function renderOverview(){
+  const container = document.getElementById('ov-groups');
+  container.innerHTML = '';
+  const groups = new Map();
+  session.questions.forEach((q, idx)=>{
+    const domain = domainForKe(keMap.get(q.keKey));
+    if(!groups.has(domain)) groups.set(domain, []);
+    groups.get(domain).push(idx);
+  });
+  for(const domain of DOMAIN_ORDER){
+    if(!groups.has(domain)) continue;
+    const g = document.createElement('div');
+    g.className = 'group';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'group-name';
+    nameEl.textContent = domain;
+    g.appendChild(nameEl);
+    const circles = document.createElement('div');
+    circles.className = 'circles';
+    for(const idx of groups.get(domain)){
+      const q = session.questions[idx];
+      const btn = document.createElement('button');
+      btn.className = 'circle';
+      btn.textContent = (idx+1);
+      btn.title = keLabel(keMap.get(q.keKey));
+      btn.dataset.idx = idx;
+      btn.addEventListener('click', ()=>{ saveCurrentAnswer(); currentIndex = idx; renderQuestion(); });
+      circles.appendChild(btn);
+    }
+    g.appendChild(circles);
+    container.appendChild(g);
+  }
+  refreshCircleStates();
+}
+
+function refreshCircleStates(){
+  document.querySelectorAll('.circle').forEach(btn=>{
+    const idx = parseInt(btn.dataset.idx,10);
+    const q = session.questions[idx];
+    btn.classList.remove('answered','bookmarked','current');
+    if(idx === currentIndex){ btn.classList.add('current'); }
+    else if(session.bookmarks.has(q.id)){ btn.classList.add('bookmarked'); }
+    else if(questionStatus(q)){ btn.classList.add('answered'); }
+  });
+}
+
+// The rich-text answer field allows pasting arbitrary HTML (not just the
+// bold/italic/list markup its own toolbar produces). Sanitize down to a small
+// allowlist before it's ever stored, so nothing pasted in can carry a script,
+// event handler, or resource-loading tag into the innerHTML re-render on the
+// review screen (which would otherwise be a self-XSS path to localStorage,
+// including the saved Gemini key).
+const RICH_TEXT_ALLOWED_TAGS = new Set(['B','I','U','STRONG','EM','UL','OL','LI','BR','DIV','P','SPAN']);
+function sanitizeRichText(html){
+  const tpl = document.createElement('template'); // template content is inert: no scripts run, no images load
+  tpl.innerHTML = html || '';
+  (function walk(node){
+    for(let i = node.childNodes.length - 1; i >= 0; i--){
+      const child = node.childNodes[i];
+      if(child.nodeType === Node.ELEMENT_NODE){
+        if(!RICH_TEXT_ALLOWED_TAGS.has(child.tagName)){
+          node.replaceChild(document.createTextNode(child.textContent), child);
+          continue;
+        }
+        for(const attr of Array.from(child.attributes)) child.removeAttribute(attr.name);
+        walk(child);
+      } else if(child.nodeType !== Node.TEXT_NODE){
+        node.removeChild(child); // comments, etc.
+      }
+    }
+  })(tpl.content);
+  const out = document.createElement('div');
+  out.appendChild(tpl.content.cloneNode(true));
+  return out.innerHTML;
+}
+
+function saveCurrentAnswer(){
+  if(!session || currentIndex >= session.questions.length) return;
+  const q = session.questions[currentIndex];
+  if(q.type === 'open'){
+    const rte = document.getElementById('rte-input');
+    if(rte){
+      const prev = session.answers.get(q.id) || {};
+      prev.openHtml = sanitizeRichText(rte.innerHTML);
+      session.answers.set(q.id, prev);
+    }
+  }
+}
+
+function renderQuestion(){
+  const q = session.questions[currentIndex];
+  const total = session.questions.length;
+  document.getElementById('nav-center').textContent = `Frage ${currentIndex+1} / ${total}`;
+  document.getElementById('prev-btn').disabled = currentIndex === 0;
+  document.getElementById('bookmark-btn').classList.toggle('active', session.bookmarks.has(q.id));
+
+  const ke = keMap.get(q.keKey);
+  const wa = document.getElementById('workarea');
+
+  let html = '';
+  html += `<div class="q-info-row">
+    <div class="q-info-box"><div class="k">Kompetenzelement</div><div class="v">${escapeHtml(keLabel(ke))}</div></div>
+    <div class="q-info-box"><div class="k">Fragetyp</div><div class="v">${q.type==='mc' ? 'Multiple Choice' : 'Freitext'}</div></div>
+  </div>`;
+  html += `<div class="q-heading">Frage ${currentIndex+1}</div>`;
+  html += `<div class="q-stem">${escapeHtml(q.stem)}</div>`;
+
+  if(q.type === 'mc'){
+    html += '<div class="options" id="options-list">';
+    const a = session.answers.get(q.id);
+    for(const opt of q.options){
+      const sel = a && a.mc === opt.letter ? ' selected' : '';
+      html += `<div class="option${sel}" data-letter="${opt.letter}">
+        <div class="letter">${opt.letter}</div><div>${escapeHtml(opt.text)}</div></div>`;
+    }
+    html += '</div>';
+  } else {
+    const a = session.answers.get(q.id);
+    const content = a && a.openHtml ? a.openHtml : '';
+    html += `<div class="answer-area">
+      <div class="rte-toolbar">
+        <button type="button" data-cmd="bold"><b>B</b></button>
+        <button type="button" data-cmd="italic"><i>I</i></button>
+        <button type="button" data-cmd="underline"><u>U</u></button>
+        <div class="sep"></div>
+        <button type="button" data-cmd="insertUnorderedList">&#8226;</button>
+        <button type="button" data-cmd="insertOrderedList">1.</button>
+        <div class="sep"></div>
+        <button type="button" data-cmd="undo">&#8634;</button>
+        <button type="button" data-cmd="redo">&#8635;</button>
+      </div>
+      <div class="rte" id="rte-input" contenteditable="true" data-placeholder="Antwort eingeben…">${content}</div>
+    </div>`;
+  }
+
+  html += `<div class="bottom-nav">
+    <button class="btn btn-secondary" id="bottom-prev">&#8592; Vorherige Frage</button>
+    <button class="btn btn-primary" id="bottom-next">${currentIndex===total-1 ? 'Zum Abschluss' : 'Nächste Frage →'}</button>
+  </div>`;
+
+  wa.innerHTML = html;
+  wa.scrollTop = 0;
+
+  if(q.type === 'mc'){
+    wa.querySelectorAll('.option').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        session.answers.set(q.id, {mc: el.dataset.letter});
+        wa.querySelectorAll('.option').forEach(o=>o.classList.remove('selected'));
+        el.classList.add('selected');
+        refreshCircleStates();
+      });
+    });
+  } else {
+    const rte = document.getElementById('rte-input');
+    rte.addEventListener('input', ()=>{ saveCurrentAnswer(); refreshCircleStates(); });
+    // Pasted HTML can carry live markup (e.g. an <img onerror=...>) that would
+    // execute immediately in this editable field, before saveCurrentAnswer's
+    // sanitizer ever runs. Force paste down to plain text so nothing but the
+    // toolbar's own formatting commands can ever put a tag in here.
+    rte.addEventListener('paste', (e)=>{
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+      document.execCommand('insertText', false, text);
+    });
+    wa.querySelectorAll('.rte-toolbar button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        document.execCommand(btn.dataset.cmd, false, null);
+        rte.focus();
+        saveCurrentAnswer();
+        refreshCircleStates();
+      });
+    });
+  }
+
+  document.getElementById('bottom-prev').disabled = currentIndex===0;
+  document.getElementById('bottom-prev').addEventListener('click', goPrev);
+  document.getElementById('bottom-next').addEventListener('click', goNext);
+
+  refreshCircleStates();
+}
+
+function goPrev(){
+  saveCurrentAnswer();
+  if(currentIndex>0){ currentIndex--; renderQuestion(); }
+}
+function goNext(){
+  saveCurrentAnswer();
+  if(currentIndex < session.questions.length-1){
+    currentIndex++; renderQuestion();
+  } else {
+    showFinishPanel();
+  }
+}
+document.getElementById('prev-btn').addEventListener('click', goPrev);
+document.getElementById('next-btn').addEventListener('click', goNext);
+document.getElementById('bookmark-btn').addEventListener('click', ()=>{
+  const q = session.questions[currentIndex];
+  if(session.bookmarks.has(q.id)) session.bookmarks.delete(q.id);
+  else session.bookmarks.add(q.id);
+  document.getElementById('bookmark-btn').classList.toggle('active', session.bookmarks.has(q.id));
+  refreshCircleStates();
+});
+
+function showFinishPanel(){
+  const wa = document.getElementById('workarea');
+  const answeredCount = session.questions.filter(questionStatus).length;
+  wa.innerHTML = `<div class="finish-panel">
+    <h2>Ende der Prüfung erreicht</h2>
+    <p>Sie haben ${answeredCount} von ${session.questions.length} Fragen beantwortet.
+    Sie können über die Übersicht links noch einmal zu offenen Fragen zurückspringen,
+    oder die Prüfung jetzt abschließen.</p>
+    <button class="btn btn-primary" id="finish-btn">Prüfung beenden</button>
+  </div>`;
+  document.getElementById('finish-btn').addEventListener('click', openFinishModal);
+}
+
+document.getElementById('end-exam-btn').addEventListener('click', openFinishModal);
+function openFinishModal(){
+  saveCurrentAnswer();
+  document.getElementById('modal-finish').classList.remove('hidden');
+}
+document.getElementById('modal-cancel').addEventListener('click', ()=>{
+  document.getElementById('modal-finish').classList.add('hidden');
+});
+document.getElementById('modal-confirm').addEventListener('click', ()=>{
+  document.getElementById('modal-finish').classList.add('hidden');
+  finishExam();
+});
+
+function finishExam(){
+  clearInterval(timerHandle);
+  saveCurrentAnswer();
+  session.finished = true;
+  document.getElementById('screen-exam').classList.add('hidden');
+  renderResults();
+  if(getAiKey() && !session.aiAutoRan){
+    session.aiAutoRan = true;
+    const btn = document.getElementById('ai-grade-all-btn');
+    if(btn) runBulkAiGrade(btn);
+  }
+}
+
+// ---------- results ----------
+function gradeMC(q){
+  const a = session.answers.get(q.id);
+  if(!a || !a.mc) return null; // unanswered
+  return a.mc === q.correct;
+}
+
+// A blank open answer needs no evaluation — like an unanswered MC question,
+// it's immediately wrong, not "pending". Only an answer that was actually
+// typed and hasn't been graded yet (manually or via AI) counts as pending.
+function hasOpenAnswer(q){
+  const a = session.answers.get(q.id);
+  return !!(a && a.openHtml && a.openHtml.replace(/<[^>]*>/g,'').trim().length > 0);
+}
+function effectiveOpenGrade(q){
+  if(!hasOpenAnswer(q)) return false;
+  return session.selfGrade.get(q.id); // undefined | true | false
+}
+
+function computeKEResults(){
+  const byKe = new Map();
+  for(const q of session.questions){
+    if(!byKe.has(q.keKey)) byKe.set(q.keKey, []);
+    byKe.get(q.keKey).push(q);
+  }
+  const results = [];
+  for(const [key, qs] of byKe){
+    let correct = 0, gradedTotal = 0, ungraded = 0;
+    for(const q of qs){
+      if(q.type === 'mc'){
+        const r = gradeMC(q);
+        gradedTotal++;
+        if(r) correct++;
+      } else {
+        const eg = effectiveOpenGrade(q);
+        gradedTotal++;
+        if(eg === undefined) ungraded++;
+        else if(eg) correct++;
+      }
+    }
+    const pct = gradedTotal ? correct/gradedTotal : 0;
+    results.push({key, ke: keMap.get(key), total: qs.length, correct, gradedTotal, ungraded, pct, passed: pct >= 0.5, pending: ungraded > 0});
+  }
+  results.sort((a,b)=> keSortKey(a.ke).localeCompare(keSortKey(b.ke)));
+  return results;
+}
+
+function renderResults(){
+  const scr = document.getElementById('screen-results');
+  scr.classList.remove('hidden');
+  scr.innerHTML = renderResultsHtml();
+  wireResultsEvents();
+}
+
+function renderResultsHtml(){
+  const keResults = computeKEResults();
+  const passedKE = keResults.filter(r=>r.passed).length;
+  const totalKE = keResults.length;
+  const anyPendingKE = keResults.some(r=>r.pending);
+  const includesAll14 = KE_LIST.filter(k=>k.name!=='Sonstige').every(k => keResults.some(r=>r.key===k.key));
+  const overallPass = includesAll14 && passedKE >= 11;
+  const ungradedOpen = session.questions.filter(q => q.type==='open' && hasOpenAnswer(q) && session.selfGrade.get(q.id)===undefined).length;
+
+  let html = '';
+  if(anyPendingKE){
+    html += `<div class="verdict pending">
+      <h2>Auswertung ausstehend</h2>
+      <p>${ungradedOpen} offene Frage(n) sind noch nicht bewertet – das Ergebnis ist vorläufig und kann sich noch
+      ändern. Bisher ${passedKE} von ${totalKE} Kompetenzelementen auf dem geforderten Niveau (≥ 50 % richtig,
+      unbewertete Fragen zählen dabei noch nicht als richtig) · erforderlich sind mindestens 11. Bewerten Sie die
+      offenen Fragen unten manuell oder per KI, um ein endgültiges Ergebnis zu erhalten.</p>
+    </div>`;
+  } else if(includesAll14){
+    html += `<div class="verdict ${overallPass?'pass':'fail'}">
+      <h2>${overallPass ? 'Bestanden' : 'Nicht bestanden'}</h2>
+      <p>${passedKE} von ${totalKE} Kompetenzelementen auf dem geforderten Niveau (≥ 50 % richtig) nachgewiesen ·
+      erforderlich sind mindestens 11.</p>
+    </div>`;
+  } else {
+    html += `<div class="verdict fail" style="background:var(--navy2)">
+      <h2>${passedKE} von ${totalKE} bearbeiteten Kompetenzelementen bestanden</h2>
+      <p>Diese Übung deckte nicht alle 14 offiziellen Kompetenzelemente ab, daher wird keine offizielle
+      Bestehens-Einschätzung berechnet. Für eine vollständige Simulation alle Kompetenzelemente auswählen.</p>
+    </div>`;
+  }
+
+  html += '<div class="ke-results">';
+  for(const r of keResults){
+    const stateClass = r.pending ? 'pending' : (r.passed ? 'pass' : 'fail');
+    const evaluated = r.gradedTotal - r.ungraded;
+    let statText;
+    if(r.ungraded > 0){
+      statText = evaluated > 0
+        ? `${r.correct}/${evaluated} bewertet richtig · ${r.ungraded} noch nicht bewertet`
+        : `${r.ungraded} noch nicht bewertet`;
+    } else {
+      statText = `${r.correct}/${r.gradedTotal} richtig (${Math.round(r.pct*100)}%)`;
+    }
+    html += `<div class="ke-card ${stateClass}">
+      <div class="name">${escapeHtml(keLabel(r.ke))}</div>
+      <div class="stat">${statText}</div>
+    </div>`;
+  }
+  html += '</div>';
+
+  const totalOpen = session.questions.filter(q=>q.type==='open').length;
+  let bulkAiBtnHtml = '';
+  if(getAiKey() && totalOpen > 0){
+    if(session.aiGradingRunning){
+      bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn" disabled>⏳ KI-Bewertung läuft…</button>`;
+    } else if(ungradedOpen === 0){
+      bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn" disabled>✓ Alle offenen Fragen bereits bewertet</button>`;
+    } else {
+      bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn">✨ Alle offenen Fragen mit KI bewerten (${ungradedOpen})</button>`;
+    }
+  }
+  html += `<div class="toolbar-row" style="margin-bottom:24px">
+    ${bulkAiBtnHtml}
+    <button class="btn btn-primary" id="restart-btn">Neue Übung starten</button>
+  </div>`;
+
+  html += `<div class="filter-row" id="review-filters">
+    <button class="active" data-f="all">Alle (${session.questions.length})</button>
+    <button data-f="mc">Multiple Choice</button>
+    <button data-f="open">Freitext</button>
+    <button data-f="wrong">Falsch / offen</button>
+  </div>`;
+
+  html += `<div id="review-list"></div>`;
+
+  return html;
+}
+
+function wireResultsEvents(){
+  let filter = 'all';
+  renderReviewList(filter);
+  document.getElementById('review-filters').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-f]');
+    if(!btn) return;
+    filter = btn.dataset.f;
+    document.querySelectorAll('#review-filters button').forEach(b=>b.classList.toggle('active', b===btn));
+    renderReviewList(filter);
+  });
+  document.getElementById('restart-btn').addEventListener('click', ()=>{
+    document.getElementById('screen-results').classList.add('hidden');
+    document.getElementById('screen-results').innerHTML = '';
+    document.getElementById('screen-start').classList.remove('hidden');
+    session = null;
+  });
+
+  const aiAllBtn = document.getElementById('ai-grade-all-btn');
+  if(aiAllBtn){
+    aiAllBtn.addEventListener('click', ()=> runBulkAiGrade(aiAllBtn));
+  }
+}
+
+// sess is captured explicitly (not read from the closure) so that an in-flight
+// grading call started before "Neue Übung starten" can never write into a
+// session that has since been replaced by a fresh one.
+async function runAiGradeQuestion(sess, q){
+  try{
+    const a = sess.answers.get(q.id);
+    const candidateText = a && a.openHtml ? stripHtml(a.openHtml) : '';
+    const result = await aiGradeOpenQuestion(q, candidateText);
+    sess.selfGrade.set(q.id, result.correct);
+    sess.aiFeedback.set(q.id, {feedback: result.feedback, error: null});
+  } catch(err){
+    sess.aiFeedback.set(q.id, {feedback: null, error: (err && err.message) || String(err)});
+  }
+}
+
+async function runBulkAiGrade(btn){
+  if(!session) return;
+  const mySession = session;
+  if(mySession.aiGradingRunning) return; // already running — refuse to start a second pass
+  const openQs = mySession.questions.filter(q => {
+    if(q.type !== 'open') return false;
+    if(mySession.selfGrade.get(q.id) !== undefined) return false;
+    const a = mySession.answers.get(q.id);
+    return !!(a && a.openHtml && a.openHtml.replace(/<[^>]*>/g,'').trim().length > 0);
+  });
+  if(openQs.length === 0) return;
+
+  mySession.aiGradingRunning = true;
+  if(btn) btn.disabled = true;
+  // freeze any per-question AI buttons currently on screen so they can't be
+  // clicked individually while the batch is in flight
+  document.querySelectorAll('.ai-grade-btn').forEach(b=>{ b.disabled = true; b.textContent = '⏳ Bewertung läuft…'; });
+
+  try{
+    for(let i=0;i<openQs.length;i++){
+      if(session !== mySession) return; // a new exam was started meanwhile — abort silently
+      const q = openQs[i];
+      if(mySession.selfGrade.get(q.id) !== undefined) continue; // graded by something else in the meantime
+      if(btn) btn.textContent = `Bewerte ${i+1}/${openQs.length}…`;
+      await runAiGradeQuestion(mySession, q);
+      if(i < openQs.length-1) await new Promise(r=>setTimeout(r, 250));
+    }
+  } finally {
+    mySession.aiGradingRunning = false;
+  }
+
+  if(session !== mySession) return; // don't touch the DOM for a session that's no longer current
+  const activeFilterBtn = document.querySelector('#review-filters button.active');
+  const activeFilter = activeFilterBtn ? activeFilterBtn.dataset.f : 'all';
+  document.getElementById('screen-results').innerHTML = renderResultsHtml();
+  wireResultsEventsPreserveFilter(activeFilter);
+}
+
+function renderReviewList(filter){
+  const list = document.getElementById('review-list');
+  list.innerHTML = '';
+  for(let i=0;i<session.questions.length;i++){
+    const q = session.questions[i];
+    let show = true;
+    if(filter==='mc') show = q.type==='mc';
+    else if(filter==='open') show = q.type==='open';
+    else if(filter==='wrong'){
+      if(q.type==='mc') show = gradeMC(q) !== true;
+      else show = effectiveOpenGrade(q) !== true;
+    }
+    if(!show) continue;
+    list.appendChild(renderReviewItem(q, i));
+  }
+}
+
+function renderReviewItem(q, idx){
+  const div = document.createElement('div');
+  div.className = 'review-item';
+  const ke = keMap.get(q.keKey);
+  let tagHtml, bodyHtml, isCorrect, notAnswered = false;
+
+  if(q.type === 'mc'){
+    const a = session.answers.get(q.id);
+    const r = gradeMC(q);
+    isCorrect = r === true;
+    notAnswered = r === null;
+    tagHtml = r===null ? '<span class="tag bad">Nicht beantwortet</span>'
+            : r ? '<span class="tag ok">Richtig</span>' : '<span class="tag bad">Falsch</span>';
+    const correctOpt = q.options.find(o=>o.letter===q.correct);
+    bodyHtml = `<div class="rowlbl">Ihre Antwort</div>
+      <div class="rowval">${a && a.mc ? a.mc + ') ' + escapeHtml(q.options.find(o=>o.letter===a.mc).text) : '—'}</div>
+      <div class="rowlbl">Richtige Antwort</div>
+      <div class="rowval">${q.correct}) ${escapeHtml(correctOpt.text)}</div>`;
+  } else if(!hasOpenAnswer(q)){
+    isCorrect = false;
+    notAnswered = true;
+    tagHtml = '<span class="tag bad">Nicht beantwortet</span>';
+    bodyHtml = `<div class="rowlbl">Ihre Antwort</div>
+      <div class="rowval"><em>keine Antwort eingegeben — zählt als falsch</em></div>
+      <div class="rowlbl">Musterantwort</div>
+      <div class="rowval">${escapeHtml(q.answer)}</div>
+      ${q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${escapeHtml(q.info)}</div>` : ''}`;
+  } else {
+    const a = session.answers.get(q.id);
+    const sg = session.selfGrade.get(q.id);
+    const fb = session.aiFeedback.get(q.id);
+    const gradedByAi = !!(fb && fb.feedback);
+    isCorrect = sg === true;
+    tagHtml = sg===true ? `<span class="tag ok">${gradedByAi?'KI: Richtig':'Selbst als richtig markiert'}</span>`
+            : sg===false ? `<span class="tag bad">${gradedByAi?'KI: Falsch':'Selbst als falsch markiert'}</span>`
+            : '<span class="tag pending">Noch nicht bewertet</span>';
+    let fbHtml = '';
+    if(fb && fb.feedback){
+      fbHtml = `<div class="ai-feedback"><strong>KI-Einschätzung:</strong> ${escapeHtml(fb.feedback)}</div>`;
+    } else if(fb && fb.error){
+      fbHtml = `<div class="ai-feedback error"><strong>KI-Bewertung fehlgeschlagen:</strong> ${escapeHtml(fb.error)}</div>`;
+    }
+    let aiBtnHtml = '';
+    if(getAiKey() && !gradedByAi){
+      if(session.aiGradingRunning){
+        aiBtnHtml = `<button class="ai-grade-btn" disabled>⏳ Bewertung läuft…</button>`;
+      } else {
+        aiBtnHtml = `<button class="ai-grade-btn" data-ai="1">${fb && fb.error ? '🔁 KI erneut versuchen' : '✨ Mit KI bewerten'}</button>`;
+      }
+    }
+    bodyHtml = `<div class="rowlbl">Ihre Antwort</div>
+      <div class="rowval">${a.openHtml}</div>
+      <div class="rowlbl">Musterantwort</div>
+      <div class="rowval">${escapeHtml(q.answer)}</div>
+      ${q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${escapeHtml(q.info)}</div>` : ''}
+      ${fbHtml}
+      <div class="self-grade-btns">
+        <button data-g="true" class="${sg===true?'chosen-ok':''}">War richtig</button>
+        <button data-g="false" class="${sg===false?'chosen-bad':''}">War falsch</button>
+        ${aiBtnHtml}
+      </div>`;
+  }
+
+  const stemPreview = q.stem.length > 90 ? q.stem.slice(0, 90) + '…' : q.stem;
+  const shouldCollapse = isCorrect || notAnswered; // nothing to review either way
+  div.innerHTML = `<details ${shouldCollapse ? '' : 'open'}>
+    <summary>
+      ${tagHtml}
+      <span class="rv-head">Frage ${idx+1} · ${escapeHtml(keLabel(ke))}</span>
+      <span class="rv-preview">${escapeHtml(stemPreview)}</span>
+    </summary>
+    <div class="rv-body">
+      <div class="stem">${escapeHtml(q.stem)}</div>
+      ${bodyHtml}
+    </div>
+  </details>`;
+
+  const gbtns = div.querySelectorAll('.self-grade-btns button[data-g]');
+  gbtns.forEach(b=>{
+    b.addEventListener('click', ()=>{
+      session.selfGrade.set(q.id, b.dataset.g === 'true');
+      const scr = document.getElementById('screen-results');
+      const activeFilter = document.querySelector('#review-filters button.active').dataset.f;
+      scr.innerHTML = renderResultsHtml();
+      wireResultsEventsPreserveFilter(activeFilter);
+    });
+  });
+
+  const aiBtn = div.querySelector('.ai-grade-btn[data-ai]');
+  if(aiBtn){
+    aiBtn.addEventListener('click', async ()=>{
+      const mySession = session;
+      if(mySession.aiGradingRunning) return; // a batch run is already in flight — refuse
+      if(mySession.selfGrade.get(q.id) !== undefined && session.aiFeedback.get(q.id) && session.aiFeedback.get(q.id).feedback) return; // already AI-graded
+      mySession.aiGradingRunning = true;
+      document.querySelectorAll('.ai-grade-btn').forEach(b=>{ b.disabled = true; b.textContent = '⏳ Bewertung läuft…'; });
+      aiBtn.textContent = 'Wird bewertet…';
+      await runAiGradeQuestion(mySession, q);
+      mySession.aiGradingRunning = false;
+      if(session !== mySession) return; // a new exam was started meanwhile
+      const scr = document.getElementById('screen-results');
+      const activeFilter = document.querySelector('#review-filters button.active').dataset.f;
+      scr.innerHTML = renderResultsHtml();
+      wireResultsEventsPreserveFilter(activeFilter);
+    });
+  }
+
+  return div;
+}
+
+function wireResultsEventsPreserveFilter(filter){
+  wireResultsEvents();
+  const btn = document.querySelector(`#review-filters button[data-f="${filter}"]`);
+  if(btn){ btn.click(); }
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str == null ? '' : String(str);
+  return d.innerHTML;
+}
+
+})();
+</script>
+</body>
+</html>
