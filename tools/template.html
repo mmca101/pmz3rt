@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Defense-in-depth: even if some future bug ever allowed script injection,
+     this stops it from sending anything (e.g. a stored Gemini key) anywhere
+     except this same origin and Google's Generative Language API. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://generativelanguage.googleapis.com; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <title>PM-ZERT Prüfungssimulator</title>
 <style>
 :root{
@@ -14,6 +18,7 @@
   --bg:#eef1f5; --card:#ffffff; --text:#1c2430; --muted:#6b7686;
   --danger:#c0392b;
   --amber:#b5680d; --amber-d:#8f5209;
+  --viewed:#8b7fd1; --viewed-d:#6f62b8;
   --radius:8px;
   font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
 }
@@ -100,6 +105,7 @@ input[type=range]{accent-color:var(--blue)}
 .circle{width:30px;height:30px;border-radius:50%;background:var(--grey-d);color:#132;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;border:none;color:#1c2430}
 .circle.answered{background:var(--green);color:#fff}
 .circle.bookmarked{background:var(--lightblue);color:#173ea6}
+.circle.viewed{background:var(--viewed);color:#fff}
 .circle.current{background:var(--blue-d);color:#fff;box-shadow:0 0 0 2px #ffd75e inset}
 
 .workarea{flex:1;overflow-y:auto;padding:26px 34px 60px;background:var(--bg)}
@@ -199,7 +205,7 @@ input[type=range]{accent-color:var(--blue)}
     <h2>Prüfung konfigurieren</h2>
     <div class="field-row">
       <div class="field">
-        <label>Fragen gesamt <span class="badge-note">(lt. Kursleitung immer 61)</span></label>
+        <label>Fragen gesamt <span class="badge-note">(immer 61)</span></label>
         <input type="number" id="cfg-count" min="1" max="500" value="61">
       </div>
       <div class="field">
@@ -235,16 +241,15 @@ input[type=range]{accent-color:var(--blue)}
       </div>
       <div class="rule-stat">
         <div class="rule-stat-num">61</div>
-        <div class="rule-stat-label">Fragen insgesamt lt. Kursleitung — dieser Simulator zielt standardmäßig auf diese Zahl</div>
+        <div class="rule-stat-label">Fragen insgesamt — dieser Simulator zielt standardmäßig auf diese Zahl</div>
       </div>
     </div>
     <ul class="rules-list">
       <li>Multiple-Choice-Fragen werden automatisch ausgewertet.</li>
       <li>Offene Fragen werden im Review mit Musterantwort angezeigt und von Ihnen — oder optional per KI — eingeschätzt.</li>
       <li>Für eine aussagekräftige Einschätzung alle 14 offiziellen Kompetenzelemente auswählen.</li>
-      <li>PM-ZERT selbst veröffentlicht die Gesamtfragenzahl nicht offiziell; laut Auskunft der Kursleitung sind es
-        aber immer genau 61 Fragen. Quellen zufolge kommen dabei etwa gleich viele Multiple-Choice- wie offene
-        Fragen vor (siehe "Fokus-Typ"-Regler unten).</li>
+      <li>Von den 61 Fragen sind laut Kursleitung üblicherweise 11-12 Multiple-Choice, der Rest offene Fragen
+        (siehe "Fokus-Typ"-Regler unten, standardmäßig auf dieses Verhältnis eingestellt).</li>
     </ul>
   </div>
 
@@ -273,15 +278,15 @@ input[type=range]{accent-color:var(--blue)}
     <div class="card">
       <h2>Fokus-Typ <span class="badge-note">(kein Feature der echten Prüfungsplattform)</span></h2>
       <div class="field" style="margin-bottom:4px">
-        <label>Anteil Multiple-Choice vs. Freitext je Kompetenzelement: <strong id="focus-type-label">50% Multiple Choice / 50% Freitext</strong></label>
-        <input type="range" id="cfg-focus-type" min="0" max="100" step="5" value="50" style="width:100%">
+        <label>Anteil Multiple-Choice vs. Freitext je Kompetenzelement: <strong id="focus-type-label">19% Multiple Choice / 81% Freitext</strong></label>
+        <input type="range" id="cfg-focus-type" min="0" max="100" step="1" value="19" style="width:100%">
       </div>
       <div class="warning-note">
         <strong>Wichtiger Hinweis:</strong> Dieser Regler ist eine reine Übungsfunktion dieses Simulators und
-        existiert so nicht im echten PM-ZERT-Zertifizierungsportal. Die echte Prüfung wird höchstwahrscheinlich
-        einen etwa <strong>50/50-Split</strong> zwischen Multiple-Choice- und offenen Fragen haben. Nutzen Sie
-        den Regler gezielt, um einen Fragetyp zu trainieren — für eine realistische Prüfungssimulation den
-        Standardwert bei 50 % belassen.
+        existiert so nicht im echten PM-ZERT-Zertifizierungsportal. Von den 61 Fragen der echten Prüfung sind
+        laut Kursleitung üblicherweise <strong>11-12 Multiple-Choice</strong>, der Rest offene Fragen — der Regler
+        steht daher standardmäßig auf ≈19&nbsp;%. Nutzen Sie ihn gezielt, um einen Fragetyp zu trainieren — für
+        eine realistische Prüfungssimulation den Standardwert belassen.
       </div>
     </div>
 
@@ -654,6 +659,7 @@ function startExam(){
     questions: selected,
     answers: new Map(),   // id -> { mc: letter|null, openHtml: string }
     bookmarks: new Set(),
+    viewed: new Set(),     // id -> opened at least once, regardless of answer state
     selfGrade: new Map(), // id -> true/false (open questions review)
     aiFeedback: new Map(), // id -> {feedback, error} from AI grading
     aiAutoRan: false,
@@ -738,10 +744,11 @@ function refreshCircleStates(){
   document.querySelectorAll('.circle').forEach(btn=>{
     const idx = parseInt(btn.dataset.idx,10);
     const q = session.questions[idx];
-    btn.classList.remove('answered','bookmarked','current');
+    btn.classList.remove('answered','bookmarked','current','viewed');
     if(idx === currentIndex){ btn.classList.add('current'); }
     else if(session.bookmarks.has(q.id)){ btn.classList.add('bookmarked'); }
     else if(questionStatus(q)){ btn.classList.add('answered'); }
+    else if(session.viewed.has(q.id)){ btn.classList.add('viewed'); }
   });
 }
 
@@ -791,6 +798,7 @@ function saveCurrentAnswer(){
 function renderQuestion(){
   const q = session.questions[currentIndex];
   const total = session.questions.length;
+  session.viewed.add(q.id);
   document.getElementById('nav-center').textContent = `Frage ${currentIndex+1} / ${total}`;
   document.getElementById('prev-btn').disabled = currentIndex === 0;
   document.getElementById('bookmark-btn').classList.toggle('active', session.bookmarks.has(q.id));
