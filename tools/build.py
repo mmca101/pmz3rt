@@ -1,7 +1,10 @@
 import csv
+import io
 import json
 import re
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -9,10 +12,52 @@ CSV_PATH = ROOT / "data" / "questions.csv"
 TEMPLATE_PATH = ROOT / "tools" / "template.html"
 OUT_PATH = ROOT / "index.html"
 
+# Google Sheets export endpoint. This is a server-side fetch (plain HTTP
+# request from this script), not a browser fetch() call from the deployed
+# page — so none of the CORS/reliability concerns that rule out live
+# client-side loading apply here. Requires the sheet to stay shared as
+# "anyone with the link can view".
+SHEET_ID = "11t6Mg6wWiLrnGqrYuuEANyK9gU4s6C4gBeuNBn5-G3E"
+SHEET_CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
+
+
+def load_rows():
+    """Fetch the question bank straight from the Google Sheet. Falls back to
+    the last-known-good local copy (data/questions.csv) if the sheet can't be
+    reached, and refreshes that local copy on every successful fetch so it
+    stays a working snapshot even if the sheet later goes away."""
+    try:
+        req = urllib.request.Request(SHEET_CSV_URL, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            raw = resp.read()
+        text = raw.decode("utf-8")
+        rows = list(csv.reader(io.StringIO(text)))
+        if not rows or not rows[0]:
+            raise ValueError("empty response from sheet")
+        CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
+        CSV_PATH.write_text(text, encoding="utf-8", newline="")
+        print(f"Fetched question bank live from Google Sheets ({len(rows)} rows)", file=sys.stderr)
+        return rows
+    except (urllib.error.URLError, TimeoutError, ValueError, UnicodeDecodeError) as e:
+        print(f"Warning: couldn't fetch sheet live ({e}); falling back to {CSV_PATH}", file=sys.stderr)
+        with CSV_PATH.open(encoding="utf-8") as f:
+            return list(csv.reader(f))
+
 KE_RE = re.compile(r"^(\d{2}\.\d{2}\.\d{2})\s+(.*)$")
-OPTION_START_RE = re.compile(r"(?:^|\n)\s*[Aa]\)\s")
-OPTION_SPLIT_RE = re.compile(r"(?:^|\n)\s*([A-Ea-e])\)\s*")
-ANSWER_LETTER_RE = re.compile(r"^\s*([A-Ea-e])\)\s*(.*)$", re.DOTALL)
+
+# An MC option marker is either a letter (A-F) or a digit (1-6), followed by
+# ')' or '.', then whitespace — covers "A)", "a)", "A.", "1)", "1." etc. The
+# marker TYPE (letter vs digit) must stay consistent within one question's
+# option list, but the separator ('.' vs ')') doesn't have to.
+OPTION_START_RE = re.compile(r"(?:^|\n)[ \t]*([Aa]|1)[.\)][ \t]+")
+OPTION_SPLIT_LETTER_RE = re.compile(r"(?:^|\n)[ \t]*([A-Fa-f])[.\)][ \t]*")
+OPTION_SPLIT_DIGIT_RE = re.compile(r"(?:^|\n)[ \t]*([1-6])[.\)][ \t]*")
+ANSWER_MARKER_RE = re.compile(r"^[ \t]*([A-Fa-f]|[1-6])[.\)][ \t]*(.*)$", re.DOTALL)
+DIGIT_TO_LETTER = {"1": "A", "2": "B", "3": "C", "4": "D", "5": "E", "6": "F"}
+
+
+def normalize_marker(raw):
+    return DIGIT_TO_LETTER[raw] if raw.isdigit() else raw.upper()
 
 
 def normalize_ke(raw):
@@ -29,18 +74,20 @@ def parse_mc(frage, antwort):
     m = OPTION_START_RE.search(frage)
     stem = frage[: m.start()].strip()
     options_block = frage[m.start():]
-    parts = OPTION_SPLIT_RE.split(options_block)
-    # parts[0] is '' (before first letter), then letter, text, letter, text...
+    is_digit_scheme = m.group(1).isdigit()
+    split_re = OPTION_SPLIT_DIGIT_RE if is_digit_scheme else OPTION_SPLIT_LETTER_RE
+    parts = split_re.split(options_block)
+    # parts[0] is '' (before first marker), then marker, text, marker, text...
     options = []
     for i in range(1, len(parts), 2):
-        letter = parts[i].upper()
+        letter = normalize_marker(parts[i])
         text = parts[i + 1].strip() if i + 1 < len(parts) else ""
         text = re.sub(r"\s*\n\s*", " ", text).strip()
         if text:
             options.append({"letter": letter, "text": text})
 
-    am = ANSWER_LETTER_RE.match(antwort.strip())
-    correct_letter = am.group(1).upper() if am else None
+    am = ANSWER_MARKER_RE.match(antwort.strip())
+    correct_letter = normalize_marker(am.group(1)) if am else None
     return stem, options, correct_letter
 
 
@@ -50,9 +97,7 @@ def clean_text(t):
 
 
 def main():
-    with CSV_PATH.open(encoding="utf-8") as f:
-        rows = list(csv.reader(f))
-
+    rows = load_rows()
     header = rows[0]
     data_rows = [r for r in rows[1:] if r and r[0].strip()]
 
@@ -69,7 +114,7 @@ def main():
         info = clean_text(info)
 
         is_mc = bool(OPTION_START_RE.search(frage)) and bool(
-            ANSWER_LETTER_RE.match(antwort)
+            ANSWER_MARKER_RE.match(antwort)
         )
 
         q = {
