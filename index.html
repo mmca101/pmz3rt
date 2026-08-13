@@ -37,8 +37,9 @@ button{font-family:inherit;cursor:pointer}
 .hidden{display:none !important}
 
 /* ---------- Start screen ---------- */
-#screen-start{max-width:820px;margin:0 auto;padding:40px 20px 80px}
-.start-header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+#screen-start{max-width:640px;margin:0 auto;padding:40px 20px;min-height:100vh;display:flex;flex-direction:column;justify-content:center}
+.start-header{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;margin-bottom:8px}
+.start-header .brand-row{display:flex;align-items:center;gap:10px;justify-content:center}
 .logo-dot{width:14px;height:14px;border-radius:3px;background:var(--green)}
 .start-header h1{font-size:22px;margin:0}
 .version-badge{display:inline-block;font-size:11px;font-weight:700;color:var(--muted);background:#e6e9ee;border-radius:10px;padding:2px 8px;vertical-align:middle;letter-spacing:.2px}
@@ -47,6 +48,16 @@ button{font-family:inherit;cursor:pointer}
 .card{background:var(--card);border-radius:var(--radius);padding:22px 24px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-top:18px}
 .card-row{display:flex;gap:18px;flex-wrap:wrap}
 .card-row .card{flex:1;min-width:320px}
+.config-toggles{display:flex;flex-direction:column;gap:8px;margin-top:18px}
+.config-section{border:1px solid var(--grey);border-radius:8px;overflow:hidden}
+.config-section summary{list-style:none;cursor:pointer;padding:11px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:600;font-size:13.5px;color:var(--navy2);background:#f7f8fa}
+.config-section summary::-webkit-details-marker{display:none}
+.config-section summary::after{content:'▾';color:var(--muted);font-size:11px;flex:0 0 auto;transition:transform .15s}
+.config-section[open] summary::after{transform:rotate(180deg)}
+.config-section summary:hover{background:#eef1f5}
+.config-section summary span:first-child{flex:1}
+.config-section-count{font-size:11.5px;color:var(--muted);font-weight:600}
+.config-section-body{padding:16px}
 .card h2{font-size:15px;margin:0 0 12px;color:var(--navy2)}
 .field-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px}
 .field{flex:1;min-width:180px}
@@ -85,9 +96,10 @@ button{font-family:inherit;cursor:pointer}
 .rules-list li{font-size:12px;color:var(--blue-d);line-height:1.5;padding-left:16px;position:relative}
 .rules-list li::before{content:'›';position:absolute;left:0;font-weight:700}
 input[type=range]{accent-color:var(--blue)}
-.gh-footer{display:flex;align-items:center;justify-content:center;margin-top:28px;padding:10px 16px;background:var(--navy2);border-radius:8px}
-.gh-link{display:flex;align-items:center;gap:8px;color:#fff;text-decoration:none;font-weight:600;font-size:13px}
-.gh-link:hover{color:var(--lightblue)}
+.gh-footer{display:flex;align-items:center;justify-content:center;margin-top:28px}
+.gh-link{display:inline-flex;align-items:center;gap:6px;color:#fff;text-decoration:none;font-weight:600;font-size:11.5px;background:var(--navy2);padding:6px 14px;border-radius:999px}
+.gh-link:hover{background:var(--pm-navy)}
+.gh-link svg{width:14px;height:14px}
 
 /* ---------- Exam screen (styled to match the real PM-ZERT portal's
    navy sidebar / light-blue header / medium-blue accent palette) ---------- */
@@ -255,52 +267,16 @@ input[type=range]{accent-color:var(--blue)}
 <!-- ================= START SCREEN ================= -->
 <div id="screen-start">
   <div class="start-header">
-    <div class="logo-dot"></div>
-    <div>
+    <div class="brand-row">
+      <div class="logo-dot"></div>
       <h1>PM-Z3RT SIM <span class="version-badge">v0.1</span></h1>
-      <div class="sub">Übungsplattform für das GPM Basiszertifikat im Projektmanagement · inoffiziell, zu Übungszwecken</div>
     </div>
-  </div>
-
-  <div class="card">
-    <h2>Prüfungssimulation konfigurieren</h2>
-    <div class="field-row">
-      <div class="field">
-        <label>Fragen gesamt <span class="badge-note">(61 in Prüfung)</span></label>
-        <input type="number" id="cfg-count" min="1" max="500" value="61">
-      </div>
-      <div class="field">
-        <label>Bearbeitungszeit (Minuten)</label>
-        <input type="number" id="cfg-time" min="5" max="240" value="90">
-      </div>
-      <div class="field">
-        <label>Kandidat/in (optional)</label>
-        <input type="text" id="cfg-name" placeholder="Name">
-      </div>
-    </div>
-    <div class="summary-line" id="cfg-summary">wird berechnet…</div>
-  </div>
-
-  <div class="toolbar-row">
-    <button class="btn btn-primary" id="start-btn" disabled>Prüfung starten</button>
-    <button class="btn btn-secondary" id="cfg-reset-btn">Konfiguration zurücksetzen</button>
-  </div>
-
-  <div class="warning-note hidden" id="manual-grading-note">
-    <strong>Hinweis:</strong> Aktuell ist keine KI-Bewertung eingerichtet. Offene Fragen müssen daher
-    <strong>manuell</strong> bewertet werden: Nach der Prüfung zeigt der Review-Modus zu jeder offenen Frage
-    die Musterantwort an, und Sie vergleichen diese selbst mit Ihrer eigenen Antwort und markieren per Klick,
-    ob sie inhaltlich richtig war.
-    <div class="toolbar-row" style="margin-top:8px;margin-bottom:0">
-      <a href="#ai-key-card" class="btn-link" style="display:inline-block;text-decoration:none">KI-Bewertung einrichten →</a>
-      <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" class="btn-link" style="display:inline-block;text-decoration:none">API-Key erstellen ↗</a>
-    </div>
+    <div class="sub">Übungsplattform für das GPM Basiszertifikat im Projektmanagement · inoffiziell, zu Übungszwecken</div>
   </div>
 
   <div class="rules-card">
     <div class="rules-header">
-      <h3>Bestehensregel</h3>
-      <span class="rules-source">lt. Prüfungsordnung GPM Basiszertifikat</span>
+      <h3>Die wichtigsten Infos</h3>
     </div>
     <div class="rules-stats">
       <div class="rule-stat">
@@ -321,74 +297,112 @@ input[type=range]{accent-color:var(--blue)}
       <li>Offene Fragen werden im Review mit Musterantwort angezeigt und von Ihnen — oder optional per KI — eingeschätzt.</li>
       <li>Für eine aussagekräftige Einschätzung alle 14 offiziellen Kompetenzelemente auswählen.</li>
       <li>Von den 61 Fragen sind laut Kursleitung üblicherweise 11-12 Multiple-Choice, der Rest offene Fragen
-        (siehe "Fokus-Typ"-Regler unten, standardmäßig auf dieses Verhältnis eingestellt).</li>
+        (siehe "MC %" oben, standardmäßig auf dieses Verhältnis eingestellt).</li>
     </ul>
   </div>
 
-  <div class="card">
-    <h2>Kompetenzelemente auswählen</h2>
-    <div class="toolbar-row ke-filter-row" style="margin-bottom:10px">
-      <button class="btn-link" id="ke-all">Alle</button>
-      <button class="btn-link" data-domain="Kontext">Kontext</button>
-      <button class="btn-link" data-domain="Persönliches und Soziales">Persönliches und Soziales</button>
-      <button class="btn-link" data-domain="Methoden und Technisches">Methoden und Technisches</button>
-      <button class="btn-link" data-domain="Sonstige">Sonstige</button>
-      <button class="btn-link" id="ke-none">Keine</button>
+  <div class="warning-note hidden" id="manual-grading-note">
+    <strong>Hinweis:</strong> Aktuell ist keine KI-Bewertung eingerichtet. Offene Fragen müssen daher
+    <strong>manuell</strong> bewertet werden: Nach der Prüfung zeigt der Review-Modus zu jeder offenen Frage
+    die Musterantwort an, und Sie vergleichen diese selbst mit Ihrer eigenen Antwort und markieren per Klick,
+    ob sie inhaltlich richtig war.
+    <div class="toolbar-row" style="margin-top:8px;margin-bottom:0">
+      <a href="#ai-key-card" id="ai-setup-link" class="btn-link" style="display:inline-block;text-decoration:none">KI-Bewertung einrichten →</a>
     </div>
-    <div class="ke-grid" id="ke-grid"></div>
   </div>
 
-  <div class="card-row">
-    <div class="card">
-      <h2>Fokus-Typ <span class="badge-note">(kein Feature der echten Prüfungsplattform)</span></h2>
-      <div class="field" style="margin-bottom:4px">
-        <label>Anteil Multiple-Choice vs. Freitext je Kompetenzelement: <strong id="focus-type-label">19% Multiple Choice / 81% Freitext</strong></label>
-        <input type="range" id="cfg-focus-type" min="0" max="100" step="1" value="19" style="width:100%">
-      </div>
-      <div class="warning-note">
-        <strong>Wichtiger Hinweis:</strong> Dieser Regler ist eine reine Übungsfunktion dieses Simulators und
-        existiert so nicht im echten PM-ZERT-Zertifizierungsportal. Von den 61 Fragen der echten Prüfung sind
-        laut Kursleitung üblicherweise <strong>11-12 Multiple-Choice</strong>, der Rest offene Fragen — der Regler
-        steht daher standardmäßig auf ≈19&nbsp;%. Nutzen Sie ihn gezielt, um einen Fragetyp zu trainieren — für
-        eine realistische Prüfungssimulation den Standardwert belassen.
-      </div>
-    </div>
-
-    <div class="card" id="ai-key-card">
-      <h2>KI-Bewertung für offene Fragen (optional)</h2>
+  <div class="card" id="config-card">
+    <h2>Prüfungssimulation konfigurieren</h2>
+    <div class="field-row">
       <div class="field">
-        <label>Google Gemini API-Key</label>
-        <input type="password" id="cfg-ai-key" placeholder="Einfügen, um KI-Bewertung zu aktivieren">
+        <label>Fragenanzahl</label>
+        <input type="number" id="cfg-count" min="1" max="500" value="61">
       </div>
-      <div class="toolbar-row">
-        <button class="btn btn-primary" id="ai-key-save">Speichern &amp; testen</button>
-        <button class="btn btn-secondary" id="ai-key-clear">Entfernen</button>
-      </div>
-      <div class="small-note" id="ai-key-status" style="margin-top:0"></div>
-      <div class="small-note">
-        Kostenlos auf <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener">aistudio.google.com/api-keys</a>
-        erstellbar (Google-Konto nötig, keine Zahlungsmethode). Der Key wird ausschließlich lokal in Ihrem
-        Browser gespeichert (localStorage) und bei Bewertung direkt von Ihrem Browser an Google gesendet — er
-        läuft über keinen Server dieser Anwendung. Ohne Key müssen die offenen Fragen zur Musterlösung selbst
-        abgeglichen und abgeschätzt werden!
+      <div class="field">
+        <label>Bearbeitungszeit (Minuten)</label>
+        <input type="number" id="cfg-time" min="5" max="240" value="90">
       </div>
     </div>
-  </div>
+    <div class="summary-line" id="cfg-summary">wird berechnet…</div>
 
-  <div class="card">
-    <h2>Fragenquelle</h2>
-    <div class="field">
-      <label>Google-Sheet-URL <span class="badge-note">(es wird nur das erste Tabellenblatt verwendet)</span></label>
-      <input type="text" id="cfg-sheet-url" value="https://docs.google.com/spreadsheets/d/11t6Mg6wWiLrnGqrYuuEANyK9gU4s6C4gBeuNBn5-G3E/edit?gid=0#gid=0">
+    <div class="config-toggles">
+      <details class="config-section" id="ai-key-card">
+        <summary><span>KI-Bewertung konfigurieren</span><span class="config-section-count" id="ai-toggle-badge"></span></summary>
+        <div class="config-section-body">
+          <div class="field">
+            <label>Google Gemini API-Key</label>
+            <input type="password" id="cfg-ai-key" placeholder="Einfügen, um KI-Bewertung zu aktivieren">
+          </div>
+          <div class="toolbar-row">
+            <button class="btn btn-primary" id="ai-key-save">Speichern &amp; testen</button>
+            <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" class="btn-link" style="display:inline-flex;align-items:center;text-decoration:none">API-Key erstellen ↗</a>
+            <button class="btn btn-secondary" id="ai-key-clear">Entfernen</button>
+          </div>
+          <div class="small-note" id="ai-key-status" style="margin-top:0"></div>
+          <div class="small-note">
+            Kostenlos auf <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener">aistudio.google.com/api-keys</a>
+            erstellbar (Google-Konto nötig, keine Zahlungsmethode). Der Key wird ausschließlich lokal in Ihrem
+            Browser gespeichert (localStorage) und bei Bewertung direkt von Ihrem Browser an Google gesendet — er
+            läuft über keinen Server dieser Anwendung. Ohne Key müssen die offenen Fragen zur Musterlösung selbst
+            abgeglichen und abgeschätzt werden!
+          </div>
+        </div>
+      </details>
+
+      <details class="config-section">
+        <summary><span>Kompetenzelemente konfigurieren</span><span class="config-section-count" id="ke-toggle-badge"></span></summary>
+        <div class="config-section-body">
+          <div class="toolbar-row ke-filter-row" style="margin-bottom:10px">
+            <button class="btn-link" id="ke-all">Alle</button>
+            <button class="btn-link" data-domain="Kontext">Kontext</button>
+            <button class="btn-link" data-domain="Persönliches und Soziales">Persönliches und Soziales</button>
+            <button class="btn-link" data-domain="Methoden und Technisches">Methoden und Technisches</button>
+            <button class="btn-link" data-domain="Sonstige">Sonstige</button>
+            <button class="btn-link" id="ke-none">Keine</button>
+          </div>
+          <div class="ke-grid" id="ke-grid"></div>
+        </div>
+      </details>
+
+      <details class="config-section">
+        <summary><span>Multiple/Single Choice Anteil anpassen</span><span class="config-section-count" id="focus-toggle-badge"></span></summary>
+        <div class="config-section-body">
+          <div class="field" style="margin-bottom:4px">
+            <label>Anteil Multiple-Choice vs. Freitext je Kompetenzelement <span class="badge-note">(kein Feature der echten Prüfungsplattform)</span>: <strong id="focus-type-label">19% Multiple Choice / 81% Freitext</strong></label>
+            <input type="range" id="cfg-focus-type" min="0" max="100" step="1" value="19" style="width:100%">
+          </div>
+          <div class="warning-note hidden" id="focus-warning-note">
+            <strong>Wichtiger Hinweis:</strong> Von den 61 Fragen der echten Prüfung sind laut Kursleitung
+            üblicherweise <strong>11-12 Multiple-Choice</strong>, der Rest offene Fragen — das entspricht ≈19&nbsp;%.
+            Für eine realistische Prüfungssimulation den Standardwert belassen; dieser Regler ist eine reine
+            Übungsfunktion und existiert so nicht im echten PM-ZERT-Zertifizierungsportal.
+          </div>
+        </div>
+      </details>
+
+      <details class="config-section">
+        <summary><span>Fragenquelle ändern</span><span class="config-section-count" id="sheet-toggle-badge"></span></summary>
+        <div class="config-section-body">
+          <div class="field">
+            <label>Google-Sheet-URL <span class="badge-note">(es wird nur das erste Tabellenblatt verwendet)</span></label>
+            <input type="text" id="cfg-sheet-url" value="https://docs.google.com/spreadsheets/d/11t6Mg6wWiLrnGqrYuuEANyK9gU4s6C4gBeuNBn5-G3E/edit?gid=0#gid=0">
+          </div>
+          <div class="toolbar-row">
+            <button class="btn btn-secondary" id="sheet-reload-btn">Fragen neu laden</button>
+          </div>
+          <div class="small-note" id="sheet-status">Lade Fragen…</div>
+          <div class="small-note">
+            Fragen werden bei jedem Seitenaufruf direkt aus diesem Sheet geladen (keine im Simulator gespeicherte Kopie).
+            Das Sheet muss auf "Jeder mit dem Link kann ansehen" freigegeben sein. Erwartete Spalten: Kompetenzelement,
+            Frage, Antwortmöglichkeit, Ergänzende Informationen.
+          </div>
+        </div>
+      </details>
     </div>
-    <div class="toolbar-row">
-      <button class="btn btn-secondary" id="sheet-reload-btn">Fragen neu laden</button>
-    </div>
-    <div class="small-note" id="sheet-status">Lade Fragen…</div>
-    <div class="small-note">
-      Fragen werden bei jedem Seitenaufruf direkt aus diesem Sheet geladen (keine im Simulator gespeicherte Kopie).
-      Das Sheet muss auf "Jeder mit dem Link kann ansehen" freigegeben sein. Erwartete Spalten: Kompetenzelement,
-      Frage, Antwortmöglichkeit, Ergänzende Informationen.
+
+    <div class="toolbar-row" style="margin-top:18px">
+      <button class="btn btn-primary" id="start-btn" disabled>Prüfung starten</button>
+      <button class="btn btn-secondary" id="cfg-reset-btn">Konfiguration zurücksetzen</button>
     </div>
   </div>
 
@@ -504,21 +518,29 @@ const manualGradingNote = document.getElementById('manual-grading-note');
 // reality: shown whenever there's no key, the key is invalid, or a later
 // grading call revealed the key stopped working — never just because a
 // string happens to sit in localStorage.
+function setAiToggleBadge(text){
+  const badge = document.getElementById('ai-toggle-badge');
+  if(badge) badge.textContent = text;
+}
 async function refreshAiKeyStatus(){
   const key = getAiKey();
   if(!key){
     setAiKeyStatus('', null);
     manualGradingNote.classList.remove('hidden');
+    setAiToggleBadge('nicht eingerichtet');
     return;
   }
   setAiKeyStatus('Key wird geprüft…', null);
+  setAiToggleBadge('wird geprüft…');
   const result = await testGeminiKey(key);
   if(result.ok){
     setAiKeyStatus('✓ Key gespeichert und gültig – KI-Bewertung ist im Review verfügbar.', 'ok');
     manualGradingNote.classList.add('hidden');
+    setAiToggleBadge('✓ aktiv');
   } else {
     setAiKeyStatus('✗ Gespeicherter Key ist ungültig: ' + result.message, 'bad');
     manualGradingNote.classList.remove('hidden');
+    setAiToggleBadge('✗ ungültig');
   }
 }
 aiKeyInput.value = getAiKey();
@@ -549,11 +571,13 @@ aiKeySaveBtn.addEventListener('click', async ()=>{
     localStorage.removeItem(AI_KEY_STORAGE);
     setAiKeyStatus('Kein Key eingegeben.', null);
     manualGradingNote.classList.remove('hidden');
+    setAiToggleBadge('nicht eingerichtet');
     return;
   }
   aiKeySaveBtn.disabled = true;
   aiKeySaveBtn.textContent = 'Prüfe…';
   setAiKeyStatus('Key wird geprüft…', null);
+  setAiToggleBadge('wird geprüft…');
   const result = await testGeminiKey(key);
   aiKeySaveBtn.disabled = false;
   aiKeySaveBtn.textContent = 'Speichern & testen';
@@ -561,10 +585,12 @@ aiKeySaveBtn.addEventListener('click', async ()=>{
     localStorage.setItem(AI_KEY_STORAGE, key);
     setAiKeyStatus('✓ Key gültig und gespeichert – KI-Bewertung ist im Review verfügbar.', 'ok');
     manualGradingNote.classList.add('hidden');
+    setAiToggleBadge('✓ aktiv');
   } else {
     localStorage.removeItem(AI_KEY_STORAGE); // don't leave a known-bad key active
     setAiKeyStatus('✗ Key ungültig: ' + result.message, 'bad');
     manualGradingNote.classList.remove('hidden');
+    setAiToggleBadge('✗ ungültig');
   }
 });
 aiKeyInput.addEventListener('keydown', (e)=>{
@@ -574,6 +600,14 @@ document.getElementById('ai-key-clear').addEventListener('click', ()=>{
   localStorage.removeItem(AI_KEY_STORAGE);
   aiKeyInput.value = '';
   refreshAiKeyStatus();
+});
+// Fragment navigation to a closed <details> isn't reliably auto-opened across
+// browsers, so force it open explicitly rather than depending on that.
+document.getElementById('ai-setup-link').addEventListener('click', (e)=>{
+  e.preventDefault();
+  const details = document.getElementById('ai-key-card');
+  details.open = true;
+  details.scrollIntoView({behavior: 'smooth', block: 'start'});
 });
 
 function stripHtml(html){
@@ -635,7 +669,6 @@ function persistConfig(){
     localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify({
       count: document.getElementById('cfg-count').value,
       time: document.getElementById('cfg-time').value,
-      name: document.getElementById('cfg-name').value,
       focusType: focusSlider.value,
       keKeys: selectedKEKeys()
     }));
@@ -651,7 +684,6 @@ function applySavedScalarFields(){
   if(!cfg) return;
   if(cfg.count) document.getElementById('cfg-count').value = cfg.count;
   if(cfg.time) document.getElementById('cfg-time').value = cfg.time;
-  if(cfg.name != null) document.getElementById('cfg-name').value = cfg.name;
   if(cfg.focusType) focusSlider.value = cfg.focusType;
 }
 function applySavedKeSelection(){
@@ -711,11 +743,12 @@ function updateSummary(){
   const shortfall = actualTotal < total ? ` — Fragenpool der Auswahl reicht nur für ${actualTotal}` : '';
   document.getElementById('cfg-summary').textContent =
     `${keys.length} Kompetenzelement(e) ausgewählt · ${actualTotal} Fragen in dieser Prüfung${shortfall}.`;
+  const keBadge = document.getElementById('ke-toggle-badge');
+  if(keBadge) keBadge.textContent = `${keys.length}/${KE_LIST.length} ausgewählt`;
 }
 grid.addEventListener('change', ()=>{ updateSummary(); persistConfig(); });
 document.getElementById('cfg-count').addEventListener('input', ()=>{ updateSummary(); persistConfig(); });
 document.getElementById('cfg-time').addEventListener('input', persistConfig);
-document.getElementById('cfg-name').addEventListener('input', persistConfig);
 document.getElementById('ke-all').addEventListener('click', ()=>{
   grid.querySelectorAll('input').forEach(el=>el.checked=true); updateSummary(); persistConfig();
 });
@@ -735,9 +768,16 @@ document.querySelectorAll('button[data-domain]').forEach(btn=>{
 
 const focusSlider = document.getElementById('cfg-focus-type');
 const focusLabel = document.getElementById('focus-type-label');
+const FOCUS_DEFAULT = 19;
 function updateFocusLabel(){
   const v = parseInt(focusSlider.value, 10);
   focusLabel.textContent = `${v}% Multiple Choice / ${100 - v}% Freitext`;
+  const badge = document.getElementById('focus-toggle-badge');
+  if(badge) badge.textContent = v === FOCUS_DEFAULT ? `${v}% (Standard)` : `${v}%`;
+  // Only nag about the real exam's ~19% once the user actually strays from
+  // it — no need to warn someone who hasn't touched the default.
+  const warning = document.getElementById('focus-warning-note');
+  if(warning) warning.classList.toggle('hidden', v === FOCUS_DEFAULT);
 }
 focusSlider.addEventListener('input', ()=>{ updateFocusLabel(); persistConfig(); });
 updateFocusLabel();
@@ -751,7 +791,6 @@ updateFocusLabel();
 document.getElementById('cfg-reset-btn').addEventListener('click', ()=>{
   document.getElementById('cfg-count').value = '61';
   document.getElementById('cfg-time').value = '90';
-  document.getElementById('cfg-name').value = '';
   grid.querySelectorAll('input').forEach(el=>el.checked=true);
   focusSlider.value = '19';
   updateFocusLabel();
@@ -843,8 +882,7 @@ function startExam(){
     aiGradingRunning: false,
     aiKeyRecheckDone: false,
     timeMinutes,
-    finished: false,
-    candidateName: document.getElementById('cfg-name').value.trim()
+    finished: false
   };
   currentIndex = 0;
   secondsLeft = timeMinutes * 60;
@@ -1606,15 +1644,21 @@ const sheetStatus = document.getElementById('sheet-status');
 const sheetReloadBtn = document.getElementById('sheet-reload-btn');
 const startBtn = document.getElementById('start-btn');
 
+function setSheetToggleBadge(text){
+  const badge = document.getElementById('sheet-toggle-badge');
+  if(badge) badge.textContent = text;
+}
 async function loadQuestions(){
   const id = extractSheetId(sheetUrlInput.value);
   if(!id){
     sheetStatus.textContent = '✗ Ungültige Google-Sheet-URL.';
     sheetStatus.className = 'small-note status-bad';
+    setSheetToggleBadge('✗ ungültige URL');
     return;
   }
   sheetStatus.textContent = 'Lade Fragen…';
   sheetStatus.className = 'small-note';
+  setSheetToggleBadge('wird geladen…');
   sheetReloadBtn.disabled = true;
   startBtn.disabled = true;
   try{
@@ -1633,11 +1677,13 @@ async function loadQuestions(){
     const mcCount = ALL_Q.filter(q=>q.type==='mc').length;
     sheetStatus.textContent = `✓ ${ALL_Q.length} Fragen geladen (${mcCount} Multiple Choice, ${ALL_Q.length-mcCount} Freitext).`;
     sheetStatus.className = 'small-note status-ok';
+    setSheetToggleBadge(`✓ ${ALL_Q.length} geladen`);
     startBtn.disabled = false;
   } catch(err){
     sheetStatus.textContent = '✗ Fehler beim Laden: ' + ((err && err.message) || err) +
       ' — Sheet muss auf "Jeder mit dem Link kann ansehen" freigegeben sein.';
     sheetStatus.className = 'small-note status-bad';
+    setSheetToggleBadge('✗ Fehler');
   } finally {
     sheetReloadBtn.disabled = false;
   }
