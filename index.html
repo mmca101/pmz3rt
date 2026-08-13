@@ -84,6 +84,8 @@ button{font-family:inherit;cursor:pointer}
 .btn-secondary:hover{background:#d9dee6}
 .btn-blue{background:var(--pm-blue);color:#fff}
 .btn-blue:hover{background:var(--pm-blue-d)}
+.btn-orange{background:var(--amber);color:#fff}
+.btn-orange:hover{background:var(--amber-d)}
 .btn-link{background:rgba(29,78,216,.08);color:var(--blue);padding:10px 18px;border-radius:6px;font-size:14px;font-weight:600;border:1px solid rgba(29,78,216,.15)}
 .btn-link:hover{background:rgba(29,78,216,.15)}
 .ke-filter-row{gap:6px}
@@ -857,7 +859,7 @@ function updateFocusLabel(){
   const badge = document.getElementById('focus-toggle-badge');
   if(badge){
     const isDefault = v === FOCUS_DEFAULT;
-    badge.textContent = isDefault ? `${v}% (Standard)` : `⚠ ${v}% (abweichend)`;
+    badge.textContent = isDefault ? `${v}% (Standard)` : `⚠ ${v}%`;
     badge.classList.toggle('non-default', !isDefault);
   }
   // Only nag about the real exam's ~19% once the user actually strays from
@@ -1374,8 +1376,9 @@ function renderResultsHtml(){
     }
   }
   html += `<div class="toolbar-row" style="margin-bottom:24px">
+    <button class="btn btn-primary" id="restart-btn">Neue Simulation starten</button>
+    <button class="btn btn-orange" id="reconfigure-btn">Konfiguration überarbeiten</button>
     ${bulkAiBtnHtml}
-    <button class="btn btn-primary" id="restart-btn">Neue Übung starten</button>
     <button class="btn btn-secondary" id="export-csv-btn">📥 Antworten als CSV exportieren</button>
   </div>`;
 
@@ -1421,6 +1424,16 @@ function wireResultsEvents(){
     renderReviewList(filter);
   });
   document.getElementById('restart-btn').addEventListener('click', ()=>{
+    document.getElementById('screen-results').classList.add('hidden');
+    document.getElementById('screen-results').innerHTML = '';
+    // Re-runs startExam() directly: the start screen's fields (count/time/
+    // focus-type/KE selection/weights) are untouched since it was only
+    // hidden, never cleared, so this reproduces the same configuration
+    // with a freshly shuffled question draw.
+    startExam();
+  });
+
+  document.getElementById('reconfigure-btn').addEventListener('click', ()=>{
     document.getElementById('screen-results').classList.add('hidden');
     document.getElementById('screen-results').innerHTML = '';
     document.getElementById('screen-start').classList.remove('hidden');
