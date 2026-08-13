@@ -337,12 +337,12 @@ input[type=range]{accent-color:var(--blue)}
         <div class="config-section-body">
           <div class="toolbar-row ke-filter-row" style="margin-bottom:10px">
             <button class="btn-link ke-action-btn" id="ke-randomize">🎲 Gewichtung zufällig</button>
-            <button class="btn-link ke-action-btn" id="ke-none">Auswahl zurücksetzen</button>
-            <button class="btn-link" id="ke-all">Alle</button>
+            <button class="btn-link" id="ke-all">Alle auswählen</button>
             <button class="btn-link" data-domain="Kontext">Kontext</button>
             <button class="btn-link" data-domain="Persönliches und Soziales">Persönliches und Soziales</button>
             <button class="btn-link" data-domain="Methoden und Technisches">Methoden und Technisches</button>
             <button class="btn-link" data-domain="Sonstige">Sonstige</button>
+            <button class="btn-link ke-action-btn" id="ke-none">Auswahl zurücksetzen</button>
           </div>
           <div class="ke-grid" id="ke-grid"></div>
         </div>
@@ -621,6 +621,16 @@ document.getElementById('ai-setup-link').addEventListener('click', (e)=>{
   const details = document.getElementById('ai-key-card');
   details.open = true;
   details.scrollIntoView({behavior: 'smooth', block: 'start'});
+});
+
+// Accordion: opening one configurator section closes the others, keeping the page compact.
+document.querySelectorAll('.config-toggles > details.config-section').forEach(section=>{
+  section.addEventListener('toggle', ()=>{
+    if(!section.open) return;
+    document.querySelectorAll('.config-toggles > details.config-section').forEach(other=>{
+      if(other !== section) other.open = false;
+    });
+  });
 });
 
 function stripHtml(html){
