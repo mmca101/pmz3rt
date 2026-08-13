@@ -73,6 +73,7 @@ button{font-family:inherit;cursor:pointer}
 .ke-weight-control input[type=range]{width:90px;vertical-align:middle}
 .ke-weight-value{font-weight:700;color:var(--navy2);min-width:18px;display:inline-block;text-align:right}
 .toolbar-row{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap}
+.main-actions-row .btn{flex:1;text-align:center}
 .btn{border:none;border-radius:6px;padding:10px 18px;font-size:14px;font-weight:600}
 .btn-primary{background:var(--green);color:#fff}
 .btn-primary:hover{background:var(--green-d)}
@@ -84,8 +85,8 @@ button{font-family:inherit;cursor:pointer}
 .btn-link:hover{background:rgba(29,78,216,.15)}
 .ke-filter-row{gap:6px}
 .ke-filter-row .btn-link{padding:5px 10px;font-size:12px;flex:1;text-align:center;white-space:nowrap}
-.ke-filter-row .ke-randomize-btn{background:rgba(181,104,13,.12);color:var(--amber-d);border-color:rgba(181,104,13,.3)}
-.ke-filter-row .ke-randomize-btn:hover{background:rgba(181,104,13,.22)}
+.ke-filter-row .ke-action-btn{background:rgba(181,104,13,.12);color:var(--amber-d);border-color:rgba(181,104,13,.3)}
+.ke-filter-row .ke-action-btn:hover{background:rgba(181,104,13,.22)}
 .small-note{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5}
 .small-note.status-ok{color:var(--green-d);font-weight:600}
 .small-note.status-bad{color:var(--danger);font-weight:600}
@@ -335,13 +336,13 @@ input[type=range]{accent-color:var(--blue)}
         <summary><span>Kompetenzelemente bearbeiten</span><span class="config-section-count" id="ke-toggle-badge"></span></summary>
         <div class="config-section-body">
           <div class="toolbar-row ke-filter-row" style="margin-bottom:10px">
-            <button class="btn-link ke-randomize-btn" id="ke-randomize">🎲 Gewichtung zufällig</button>
+            <button class="btn-link ke-action-btn" id="ke-randomize">🎲 Gewichtung zufällig</button>
+            <button class="btn-link ke-action-btn" id="ke-none">Auswahl zurücksetzen</button>
             <button class="btn-link" id="ke-all">Alle</button>
             <button class="btn-link" data-domain="Kontext">Kontext</button>
             <button class="btn-link" data-domain="Persönliches und Soziales">Persönliches und Soziales</button>
             <button class="btn-link" data-domain="Methoden und Technisches">Methoden und Technisches</button>
             <button class="btn-link" data-domain="Sonstige">Sonstige</button>
-            <button class="btn-link" id="ke-none">Keine</button>
           </div>
           <div class="ke-grid" id="ke-grid"></div>
         </div>
@@ -383,7 +384,7 @@ input[type=range]{accent-color:var(--blue)}
       </details>
     </div>
 
-    <div class="toolbar-row" style="margin-top:18px">
+    <div class="toolbar-row main-actions-row" style="margin-top:18px">
       <button class="btn btn-primary" id="start-btn" disabled>Prüfung starten</button>
       <button class="btn btn-blue" id="rules-toggle-btn">Regeln anzeigen</button>
       <button class="btn btn-secondary" id="cfg-reset-btn">Konfiguration zurücksetzen</button>
@@ -730,9 +731,9 @@ function renderKeGrid(){
     const wrap = document.createElement('div');
     wrap.className = 'ke-item-wrap';
     wrap.innerHTML = `
-      <label class="ke-item">
+      <label class="ke-item" title="${keLabel(ke)}">
         <input type="checkbox" data-key="${ke.key}" checked>
-        <span>${keLabel(ke)}</span> <span class="cnt">(${ke.count})</span>
+        <span>${ke.name}</span> <span class="cnt">(${ke.count})</span>
       </label>
       <div class="ke-weight-control" title="Gewichtung: mehr = anteilig mehr Fragen aus diesem Thema">
         <input type="range" min="1" max="5" step="1" value="1" class="ke-weight-input" data-key="${ke.key}">
@@ -813,7 +814,14 @@ document.getElementById('ke-all').addEventListener('click', ()=>{
   grid.querySelectorAll('input').forEach(el=>el.checked=true); updateSummary(); persistConfig();
 });
 document.getElementById('ke-none').addEventListener('click', ()=>{
-  grid.querySelectorAll('input').forEach(el=>el.checked=false); updateSummary(); persistConfig();
+  grid.querySelectorAll('input[type=checkbox]').forEach(el=>el.checked=false);
+  grid.querySelectorAll('.ke-weight-input').forEach(input=>{
+    input.value = 1;
+    keWeights.set(input.dataset.key, 1);
+    grid.querySelector(`.ke-weight-value[data-key-value="${input.dataset.key}"]`).textContent = '1×';
+  });
+  updateSummary();
+  persistConfig();
 });
 document.querySelectorAll('button[data-domain]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
