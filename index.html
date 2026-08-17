@@ -147,8 +147,6 @@ input[type=range]{accent-color:var(--blue)}
 .sidebar-close-btn{display:none;background:transparent;border:none;color:#c7d1e0;font-size:22px;line-height:1;padding:0 4px;cursor:pointer}
 .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:39}
 .sidebar-backdrop.visible{display:block}
-.sidebar .type-group{margin-bottom:10px}
-.sidebar .type-group-name{padding:10px 16px 8px;font-size:13px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:4px}
 .sidebar .group{margin-bottom:6px}
 .sidebar .group-name{padding:8px 16px 4px;font-size:11.5px;font-weight:700;color:#9db0cf;text-transform:uppercase;letter-spacing:.3px}
 .circles{display:flex;flex-wrap:wrap;gap:10px;padding:6px 16px 10px}
@@ -1077,55 +1075,39 @@ function renderOverview(){
   const container = document.getElementById('ov-groups');
   container.innerHTML = '';
 
-  // Two top-level sections (Checkboxfragen, then Freitext) so the overview
-  // mirrors the "Checkbox-Fragen zuerst" exam-wide bundling; each section is
-  // then broken down by Kompetenzelement for easier navigation within it.
+  // Two flat groups (Checkboxfragen, then Freitext) mirroring the
+  // "Checkbox-Fragen zuerst" exam-wide bundling. Each circle's title
+  // tooltip still shows its Kompetenzelement on hover.
   const typeGroups = [
     {label: 'Checkboxfragen', match: q => q.type === 'mc'},
     {label: 'Freitext', match: q => q.type === 'open'}
   ];
 
   for(const typeGroup of typeGroups){
-    const byKe = new Map();
-    session.questions.forEach((q, idx) => {
-      if(!typeGroup.match(q)) return;
-      if(!byKe.has(q.keKey)) byKe.set(q.keKey, []);
-      byKe.get(q.keKey).push(idx);
-    });
-    if(byKe.size === 0) continue;
+    const idxs = [];
+    session.questions.forEach((q, idx) => { if(typeGroup.match(q)) idxs.push(idx); });
+    if(idxs.length === 0) continue;
 
-    const typeSection = document.createElement('div');
-    typeSection.className = 'type-group';
-    const typeHeader = document.createElement('div');
-    typeHeader.className = 'type-group-name';
-    typeHeader.textContent = typeGroup.label;
-    typeSection.appendChild(typeHeader);
-
-    for(const ke of KE_LIST){
-      const idxs = byKe.get(ke.key);
-      if(!idxs) continue;
-      const g = document.createElement('div');
-      g.className = 'group';
-      const nameEl = document.createElement('div');
-      nameEl.className = 'group-name';
-      nameEl.textContent = keLabel(ke);
-      g.appendChild(nameEl);
-      const circles = document.createElement('div');
-      circles.className = 'circles';
-      for(const idx of idxs){
-        const q = session.questions[idx];
-        const btn = document.createElement('button');
-        btn.className = 'circle';
-        btn.textContent = (idx+1);
-        btn.title = keLabel(keMap.get(q.keKey));
-        btn.dataset.idx = idx;
-        btn.addEventListener('click', ()=>{ saveCurrentAnswer(); currentIndex = idx; renderQuestion(); closeMobileSidebar(); });
-        circles.appendChild(btn);
-      }
-      g.appendChild(circles);
-      typeSection.appendChild(g);
+    const g = document.createElement('div');
+    g.className = 'group';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'group-name';
+    nameEl.textContent = typeGroup.label;
+    g.appendChild(nameEl);
+    const circles = document.createElement('div');
+    circles.className = 'circles';
+    for(const idx of idxs){
+      const q = session.questions[idx];
+      const btn = document.createElement('button');
+      btn.className = 'circle';
+      btn.textContent = (idx+1);
+      btn.title = keLabel(keMap.get(q.keKey));
+      btn.dataset.idx = idx;
+      btn.addEventListener('click', ()=>{ saveCurrentAnswer(); currentIndex = idx; renderQuestion(); closeMobileSidebar(); });
+      circles.appendChild(btn);
     }
-    container.appendChild(typeSection);
+    g.appendChild(circles);
+    container.appendChild(g);
   }
   refreshCircleStates();
 }
