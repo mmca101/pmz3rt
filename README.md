@@ -1,4 +1,4 @@
-# SÍM-C3RT Prüfungssimulator
+# SiM-C3RT Prüfungssimulator
 
 Eine inoffizielle, schlanke Übungsplattform für das **GPM Basiszertifikat im
 Projektmanagement**. Nachgebaut nach der UI-Beschreibung im "Anleitung zur
