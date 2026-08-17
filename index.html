@@ -1760,8 +1760,8 @@ function renderReviewItem(q, idx){
     bodyHtml = `<div class="rowlbl">Ihre Antwort</div>
       <div class="rowval"><em>keine Antwort eingegeben — zählt als falsch</em></div>
       <div class="rowlbl">Musterantwort</div>
-      <div class="rowval">${escapeHtml(q.answer)}</div>
-      ${q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${escapeHtml(q.info)}</div>` : ''}`;
+      <div class="rowval">${renderMarkdownSafe(q.answer)}</div>
+      ${q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${renderMarkdownSafe(q.info)}</div>` : ''}`;
   } else {
     const a = session.answers.get(q.id);
     const sg = session.selfGrade.get(q.id);
@@ -1773,7 +1773,7 @@ function renderReviewItem(q, idx){
             : '<span class="tag pending">Noch nicht bewertet</span>';
     let fbHtml = '';
     if(fb && fb.feedback){
-      fbHtml = `<div class="ai-feedback"><strong>KI-Einschätzung:</strong> ${escapeHtml(fb.feedback)}</div>`;
+      fbHtml = `<div class="ai-feedback"><strong>KI-Einschätzung:</strong> ${renderMarkdownSafe(fb.feedback)}</div>`;
     } else if(fb && fb.error){
       fbHtml = `<div class="ai-feedback error"><strong>KI-Bewertung fehlgeschlagen:</strong> ${escapeHtml(fb.error)}</div>`;
     }
@@ -1788,8 +1788,8 @@ function renderReviewItem(q, idx){
     bodyHtml = `<div class="rowlbl">Ihre Antwort</div>
       <div class="rowval">${a.openHtml}</div>
       <div class="rowlbl">Musterantwort</div>
-      <div class="rowval">${escapeHtml(q.answer)}</div>
-      ${q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${escapeHtml(q.info)}</div>` : ''}
+      <div class="rowval">${renderMarkdownSafe(q.answer)}</div>
+      ${q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${renderMarkdownSafe(q.info)}</div>` : ''}
       ${fbHtml}
       <div class="self-grade-btns">
         <button data-g="true" class="${sg===true?'chosen-ok':''}">War richtig</button>
@@ -1855,6 +1855,39 @@ function escapeHtml(str){
   const d = document.createElement('div');
   d.textContent = str == null ? '' : String(str);
   return d.innerHTML;
+}
+
+// Minimal, safe markdown-ish renderer for Musterantwort / KI-Feedback text
+// (sheet-authored answers and AI responses often use **bold**, `code`, lists,
+// and headings for readability). Escapes first, then only ever introduces a
+// small fixed set of formatting tags — never raw HTML passthrough, so this
+// is safe to use on untrusted/AI-generated text.
+function renderMarkdownSafe(str){
+  if(str == null || str === '') return '';
+  const lines = escapeHtml(str).split(/\r?\n/);
+  let html = '';
+  let inList = false;
+  const closeList = () => { if(inList){ html += '</ul>'; inList = false; } };
+  const inline = (s) => s
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*(?!\*)(.+?)\*(?!\*)/g, '$1<em>$2</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>');
+  for(const rawLine of lines){
+    const line = rawLine.trim();
+    if(line === ''){ closeList(); continue; }
+    const heading = /^#{1,6}\s+(.*)$/.exec(line);
+    if(heading){ closeList(); html += `<strong>${inline(heading[1])}</strong><br>`; continue; }
+    const listItem = /^[-*]\s+(.*)$/.exec(line);
+    if(listItem){
+      if(!inList){ html += '<ul>'; inList = true; }
+      html += `<li>${inline(listItem[1])}</li>`;
+      continue;
+    }
+    closeList();
+    html += inline(line) + '<br>';
+  }
+  closeList();
+  return html;
 }
 
 // ---------- live question loading from Google Sheets ----------
