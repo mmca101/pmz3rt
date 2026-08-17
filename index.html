@@ -40,7 +40,7 @@ button{font-family:inherit;cursor:pointer}
 #screen-start{max-width:640px;margin:0 auto;padding:40px 20px;min-height:100vh;display:flex;flex-direction:column;justify-content:center}
 .start-header{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;margin-bottom:8px}
 .start-header .brand-row{display:flex;align-items:center;gap:10px;justify-content:center}
-.start-logo{height:180px;width:auto;margin:0}
+.start-logo{height:162px;width:auto;margin:0}
 .logo-dot{width:14px;height:14px;border-radius:3px;background:var(--green)}
 .version-badge{display:inline-block;font-size:11px;font-weight:700;color:var(--muted);background:#e6e9ee;border-radius:10px;padding:2px 8px;vertical-align:middle;letter-spacing:.2px}
 .topbar .brand .version-badge{background:rgba(13,44,94,.12);color:var(--pm-navy)}
@@ -146,6 +146,8 @@ input[type=range]{accent-color:var(--blue)}
 .sidebar-close-btn{display:none;background:transparent;border:none;color:#c7d1e0;font-size:22px;line-height:1;padding:0 4px;cursor:pointer}
 .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:39}
 .sidebar-backdrop.visible{display:block}
+.sidebar .type-group{margin-bottom:10px}
+.sidebar .type-group-name{padding:10px 16px 8px;font-size:13px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:4px}
 .sidebar .group{margin-bottom:6px}
 .sidebar .group-name{padding:8px 16px 4px;font-size:11.5px;font-weight:700;color:#9db0cf;text-transform:uppercase;letter-spacing:.3px}
 .circles{display:flex;flex-wrap:wrap;gap:10px;padding:6px 16px 10px}
@@ -188,6 +190,11 @@ input[type=range]{accent-color:var(--blue)}
 
 /* ---------- Modal ---------- */
 .modal-overlay{position:fixed;inset:0;background:rgba(10,16,30,.55);display:flex;align-items:center;justify-content:center;z-index:50}
+.reader-overlay{position:fixed;right:18px;bottom:18px;background:#fff;border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.22);display:flex;align-items:center;gap:8px;padding:6px 14px 6px 6px;z-index:41}
+.reader-overlay.reader-hidden{display:none}
+.reader-play-btn{background:var(--pm-blue);color:#fff;border:none;width:36px;height:36px;border-radius:50%;font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
+.reader-play-btn:hover{background:var(--pm-blue-d)}
+.reader-speed{border:1px solid var(--grey);border-radius:6px;padding:5px 6px;font-size:12px;background:#fff;color:var(--navy2);cursor:pointer}
 .modal{background:#fff;border-radius:10px;padding:26px 28px;max-width:420px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3)}
 .modal h3{margin:0 0 10px;font-size:16px}
 .modal p{font-size:13.5px;color:var(--muted);line-height:1.5;margin:0 0 20px}
@@ -474,6 +481,16 @@ input[type=range]{accent-color:var(--blue)}
     <div class="workarea" id="workarea">
       <!-- filled by JS -->
     </div>
+  </div>
+  <div class="reader-overlay reader-hidden" id="reader-overlay">
+    <button type="button" class="reader-play-btn" id="reader-play-btn" title="Frage vorlesen" aria-label="Frage vorlesen">▶</button>
+    <select id="reader-speed" class="reader-speed" title="Vorlesegeschwindigkeit" aria-label="Vorlesegeschwindigkeit">
+      <option value="0.75">0.75×</option>
+      <option value="1" selected>1×</option>
+      <option value="1.25">1.25×</option>
+      <option value="1.5">1.5×</option>
+      <option value="2">2×</option>
+    </select>
   </div>
 </div>
 
@@ -1058,34 +1075,56 @@ function questionStatus(q){
 function renderOverview(){
   const container = document.getElementById('ov-groups');
   container.innerHTML = '';
-  const groups = new Map();
-  session.questions.forEach((q, idx)=>{
-    const domain = domainForKe(keMap.get(q.keKey));
-    if(!groups.has(domain)) groups.set(domain, []);
-    groups.get(domain).push(idx);
-  });
-  for(const domain of DOMAIN_ORDER){
-    if(!groups.has(domain)) continue;
-    const g = document.createElement('div');
-    g.className = 'group';
-    const nameEl = document.createElement('div');
-    nameEl.className = 'group-name';
-    nameEl.textContent = domain;
-    g.appendChild(nameEl);
-    const circles = document.createElement('div');
-    circles.className = 'circles';
-    for(const idx of groups.get(domain)){
-      const q = session.questions[idx];
-      const btn = document.createElement('button');
-      btn.className = 'circle';
-      btn.textContent = (idx+1);
-      btn.title = keLabel(keMap.get(q.keKey));
-      btn.dataset.idx = idx;
-      btn.addEventListener('click', ()=>{ saveCurrentAnswer(); currentIndex = idx; renderQuestion(); closeMobileSidebar(); });
-      circles.appendChild(btn);
+
+  // Two top-level sections (Checkboxfragen, then Freitext) so the overview
+  // mirrors the "Checkbox-Fragen zuerst" exam-wide bundling; each section is
+  // then broken down by Kompetenzelement for easier navigation within it.
+  const typeGroups = [
+    {label: 'Checkboxfragen', match: q => q.type === 'mc'},
+    {label: 'Freitext', match: q => q.type === 'open'}
+  ];
+
+  for(const typeGroup of typeGroups){
+    const byKe = new Map();
+    session.questions.forEach((q, idx) => {
+      if(!typeGroup.match(q)) return;
+      if(!byKe.has(q.keKey)) byKe.set(q.keKey, []);
+      byKe.get(q.keKey).push(idx);
+    });
+    if(byKe.size === 0) continue;
+
+    const typeSection = document.createElement('div');
+    typeSection.className = 'type-group';
+    const typeHeader = document.createElement('div');
+    typeHeader.className = 'type-group-name';
+    typeHeader.textContent = typeGroup.label;
+    typeSection.appendChild(typeHeader);
+
+    for(const ke of KE_LIST){
+      const idxs = byKe.get(ke.key);
+      if(!idxs) continue;
+      const g = document.createElement('div');
+      g.className = 'group';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'group-name';
+      nameEl.textContent = keLabel(ke);
+      g.appendChild(nameEl);
+      const circles = document.createElement('div');
+      circles.className = 'circles';
+      for(const idx of idxs){
+        const q = session.questions[idx];
+        const btn = document.createElement('button');
+        btn.className = 'circle';
+        btn.textContent = (idx+1);
+        btn.title = keLabel(keMap.get(q.keKey));
+        btn.dataset.idx = idx;
+        btn.addEventListener('click', ()=>{ saveCurrentAnswer(); currentIndex = idx; renderQuestion(); closeMobileSidebar(); });
+        circles.appendChild(btn);
+      }
+      g.appendChild(circles);
+      typeSection.appendChild(g);
     }
-    g.appendChild(circles);
-    container.appendChild(g);
+    container.appendChild(typeSection);
   }
   refreshCircleStates();
 }
@@ -1145,7 +1184,76 @@ function saveCurrentAnswer(){
   }
 }
 
+// ---------- question reader (browser Web Speech API — no key, no network) ----------
+const readerSupported = 'speechSynthesis' in window;
+const readerOverlay = document.getElementById('reader-overlay');
+const readerPlayBtn = document.getElementById('reader-play-btn');
+const readerSpeedSelect = document.getElementById('reader-speed');
+let readerVoice = null;
+
+function readerPickVoice(){
+  const voices = speechSynthesis.getVoices();
+  readerVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('de')) || voices[0] || null;
+}
+
+function readerBuildText(q){
+  let text = q.stem;
+  if(q.type === 'mc'){
+    text += '. ' + q.options.map(o => `${o.letter}. ${o.text}`).join('. ');
+  }
+  return text;
+}
+
+function readerSetIcon(playing){
+  readerPlayBtn.textContent = playing ? '⏸' : '▶';
+  readerPlayBtn.title = playing ? 'Pausieren' : 'Frage vorlesen';
+}
+
+function readerStop(){
+  if(!readerSupported) return;
+  speechSynthesis.cancel();
+  readerSetIcon(false);
+}
+
+function readerToggle(){
+  if(!readerSupported || !session || currentIndex >= session.questions.length) return;
+  if(speechSynthesis.speaking && !speechSynthesis.paused){
+    speechSynthesis.pause();
+    readerSetIcon(false);
+    return;
+  }
+  if(speechSynthesis.paused){
+    speechSynthesis.resume();
+    readerSetIcon(true);
+    return;
+  }
+  const q = session.questions[currentIndex];
+  const utter = new SpeechSynthesisUtterance(readerBuildText(q));
+  utter.lang = 'de-DE';
+  utter.rate = parseFloat(readerSpeedSelect.value) || 1;
+  if(readerVoice) utter.voice = readerVoice;
+  utter.onend = () => readerSetIcon(false);
+  utter.onerror = () => readerSetIcon(false);
+  speechSynthesis.speak(utter);
+  readerSetIcon(true);
+}
+
+if(readerSupported){
+  readerOverlay.classList.remove('reader-hidden');
+  readerPickVoice();
+  speechSynthesis.onvoiceschanged = readerPickVoice;
+  readerPlayBtn.addEventListener('click', readerToggle);
+  readerSpeedSelect.addEventListener('change', () => {
+    // The Web Speech API can't change rate mid-utterance, so a speed change
+    // restarts the current question's narration from the beginning.
+    const wasSpeaking = speechSynthesis.speaking;
+    readerStop();
+    if(wasSpeaking) readerToggle();
+  });
+}
+
 function renderQuestion(){
+  readerStop();
   const q = session.questions[currentIndex];
   const total = session.questions.length;
   session.viewed.add(q.id);
@@ -1293,6 +1401,7 @@ function showFinishPanel(){
 
 document.getElementById('end-exam-btn').addEventListener('click', openFinishModal);
 function openFinishModal(){
+  readerStop();
   saveCurrentAnswer();
   document.getElementById('modal-finish').classList.remove('hidden');
 }
@@ -1305,6 +1414,7 @@ document.getElementById('modal-confirm').addEventListener('click', ()=>{
 });
 
 function finishExam(){
+  readerStop();
   clearInterval(timerHandle);
   saveCurrentAnswer();
   session.finished = true;
