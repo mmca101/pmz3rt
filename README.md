@@ -1,4 +1,4 @@
-# PM-Z3RT Prüfungssimulator
+# SiM-C3RT Prüfungssimulator
 
 Eine inoffizielle, schlanke Übungsplattform für das **GPM Basiszertifikat im
 Projektmanagement**. Nachgebaut nach der UI-Beschreibung im "Anleitung zur
@@ -96,12 +96,15 @@ wie zuvor rein manuell.
 - Bearbeitungszeit in Minuten
 - Auswahl, welche der 14 offiziellen Kompetenzelemente (+ "Sonstige"-Zusatzfragen)
   einbezogen werden, inkl. Schnellfilter je ICB4-Kompetenzbereich
-- "Fokus-Typ"-Regler (reine Übungsfunktion, kein Feature der echten
-  Prüfungsplattform): Anteil Multiple-Choice vs. Freitext, Standard ≈19 %
-  (laut Kursleitung üblicherweise 11–12 von 61 Fragen Multiple-Choice)
+- "Fokus-Typ"-Regler (reine Übungsfunktion): Anteil Multiple-Choice vs.
+  Freitext, Standard ≈19 % (laut Kursleitung üblicherweise 11–12 von 61
+  Fragen Multiple-Choice)
+- "Multiple/Single-Choice-Fragen zuerst" (Standard: an): bündelt alle
+  Multiple-/Single-Choice-Fragen an den Anfang der Prüfung, wie im echten
+  Portal; abwählen mischt beide Fragetypen zufällig für abwechslungsreicheres Üben
 
-**Hinweis zur Fragenanzahl:** PM-ZERT veröffentlicht selbst keine genaue
-Gesamtzahl an Prüfungsfragen. Offiziell dokumentiert sind nur: 90 Minuten
-Bearbeitungszeit, 14 Kompetenzelemente, 11 davon müssen bestanden werden. Die
-Angaben zu 61 Fragen und ~11–12 Multiple-Choice-Fragen stammen von der
-Kursleitung, nicht von PM-ZERT selbst.
+**Hinweis zur Fragenanzahl:** Die Zertifizierungsstelle veröffentlicht selbst
+keine genaue Gesamtzahl an Prüfungsfragen. Offiziell dokumentiert sind nur: 90
+Minuten Bearbeitungszeit, 14 Kompetenzelemente, 11 davon müssen bestanden
+werden. Die Angaben zu 61 Fragen und ~11–12 Multiple-Choice-Fragen stammen von
+der Kursleitung, nicht von der Zertifizierungsstelle selbst.
