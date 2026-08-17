@@ -4,11 +4,15 @@ Eine inoffizielle, schlanke Übungsplattform für das **GPM Basiszertifikat im
 Projektmanagement**. Nachgebaut nach der UI-Beschreibung im "Anleitung zur
 Nutzung des Zertifizierungsportals" (Kap. 6, S. 19–24).
 
-**Die gesamte App ist eine einzige Datei: [`index.html`](index.html).**
+**Die gesamte App ist im Kern eine einzige Datei: [`index.html`](index.html).**
 Kein Build-Schritt, keine Abhängigkeiten. Der Fragenpool wird bei jedem
-Seitenaufruf live aus einem konfigurierbaren Google Sheet geladen (Standard-
-URL ist im Konfigurator hinterlegt) — es gibt keine im Repo gespeicherte
-Kopie der Fragen mehr.
+Seitenaufruf live aus einem konfigurierbaren Google Sheet geladen — es gibt
+keine im Repo gespeicherte Kopie der Fragen und auch keine im Code
+hinterlegte Standard-Quelle mehr; die Sheet-URL wird manuell eingetragen
+oder per Link mitgegeben (siehe [Fragenquelle](#fragenquelle) unten).
+[`404.html`](404.html) ist eine reine Kopie von `index.html` und existiert
+ausschließlich, damit GitHub Pages auch Deep-Links mit einer eingebetteten
+Sheet-URL im Pfad ausliefert (siehe unten) — es ist keine eigenständige Seite.
 
 ## Lokal öffnen
 
@@ -31,19 +35,41 @@ mehr offline.
 
 ## Fragenquelle
 
-Im Konfigurator (unterste Karte "Fragenquelle") lässt sich die Google-Sheet-URL
-einsehen und ändern. Es wird immer nur das **erste Tabellenblatt** (`gid=0`)
-gelesen. Erwartete Spalten: `Kompetenzelement`, `Frage`, `Antwortmöglichkeit`,
-`Ergänzende Informationen`.
+Im Konfigurator (Karte "Fragenquelle") lässt sich die Google-Sheet-URL
+eintragen. Es wird immer nur das **erste Tabellenblatt** (`gid=0`) gelesen.
+Erwartete Spalten: `Kompetenzelement`, `Frage`, `Antwortmöglichkeit`,
+`Ergänzende Informationen`. Es gibt keine im Code hinterlegte Standard-URL —
+ohne eingetragene oder per Link mitgegebene Sheet-URL zeigt der Konfigurator
+"Keine Quelle gefunden" und die Prüfung lässt sich nicht starten.
 
 Das Sheet muss auf **"Jeder mit dem Link kann ansehen"** freigegeben sein,
 sonst schlägt das Laden fehl (Fehlermeldung erscheint direkt im Konfigurator,
 mit "Fragen neu laden"-Button zum Wiederholen).
 
-Multiple-Choice-Fragen werden anhand von Antwortmarkierungen im Fragetext
-erkannt — unterstützt werden `A)`, `a)`, `A.`, `1)` und `1.` (beliebig
-gemischt, wird intern auf A–F normalisiert). Alles andere gilt als offene
-Frage.
+Checkbox-Fragen (Multiple/Single-Choice) werden anhand von Antwortmarkierungen
+im Fragetext erkannt — unterstützt werden `A)`, `a)`, `A.`, `1)` und `1.`
+(beliebig gemischt, wird intern auf A–F normalisiert). Alles andere gilt als
+offene Frage.
+
+### Fragenquelle per Link mitgeben
+
+Die Sheet-URL lässt sich direkt in den Seitenlink einbetten, damit die App
+sofort mit dieser Quelle startet, ohne manuelles Eintragen:
+
+```
+https://<domain>/?sheet=<Google-Sheet-URL>
+https://<domain>/<Google-Sheet-URL>
+```
+
+Beide Formen sind gleichwertig; welche URL eingebettet ist, entscheidet
+allein, wer den Link verschickt — es gibt keine im Repo gespeicherte Beispiel-
+oder Standard-Sheet-URL. Die zweite Form (URL direkt nach der Domain, ohne
+`?sheet=`) funktioniert nur dank [`404.html`](404.html): GitHub Pages ist ein
+reiner Static-File-Host ohne serverseitiges Routing, liefert aber für jeden
+nicht existierenden Pfad automatisch `404.html` aus (Standard-Trick für
+Client-seitiges Routing auf statischen Hosts) — und die ist eine 1:1-Kopie
+von `index.html`, sodass die App auch dann lädt und die eingebettete URL aus
+`location.pathname` auslesen kann.
 
 ## Funktionsumfang
 
@@ -56,16 +82,24 @@ Nachgebildet aus der Anleitung (Kap. 6.2–6.9):
   geöffnet aber nicht beantwortet, gelb = Lesezeichen, dunkelblau = aktuelle Frage)
 - Navigation per Pfeiltasten in der Kopfzeile oder durch Klick auf die Kreise
 - Lesezeichen setzen/entfernen
+- Fragen vorlesen lassen (Play/Pause + Geschwindigkeit, unten rechts als
+  Overlay): nutzt die im Browser eingebaute Web-Speech-API — kein API-Key,
+  keine Internetverbindung nötig, funktioniert offline
 - Freitext-Antwortfeld mit einfacher Rich-Text-Toolbar (fett/kursiv/unterstrichen/Listen)
-  sowie Multiple-Choice-Fragen mit auswählbaren Antwortoptionen
+  sowie Checkbox-Fragen (Multiple/Single-Choice) mit auswählbaren Antwortoptionen
 - Abschlussansicht mit Bestätigungsdialog ("kann nicht fortgesetzt werden")
 - Auswertung nach der echten Bestehensregel der Prüfungsordnung: **11 von 14
   Kompetenzelementen müssen auf dem geforderten Niveau (≥ 50 % der Fragen
-  richtig) nachgewiesen werden.** Multiple-Choice wird automatisch ausgewertet;
-  offene Fragen werden im Review mit Musterantwort angezeigt und lassen sich
-  selbst als richtig/falsch markieren — optional auch per KI (siehe unten).
-  Unbeantwortete Fragen (egal ob Multiple-Choice oder offen) zählen sofort als
-  falsch, ohne dass eine Bewertung nötig ist.
+  richtig) nachgewiesen werden.** Checkbox-Fragen werden automatisch
+  ausgewertet; offene Fragen werden im Review mit Musterantwort angezeigt und
+  lassen sich selbst als richtig/falsch markieren — optional auch per KI
+  (siehe unten). Musterantwort, Zusatzinfo und KI-Einschätzung werden dabei
+  als einfaches Markdown gerendert (fett, Listen, Überschriften), statt
+  rohen Text mit sichtbaren `**`/`-`/`#`-Zeichen anzuzeigen. Unbeantwortete
+  Fragen (egal ob Checkbox oder offen) zählen sofort als falsch, ohne dass
+  eine Bewertung nötig ist.
+- Ergebnisse als CSV exportierbar (Kompetenzelement, Frage, eigene Antwort,
+  Musterantwort, Zusatzinfo, Bewertung, KI-Begründung)
 
 ## KI-Bewertung offener Fragen (optional)
 
@@ -96,15 +130,19 @@ wie zuvor rein manuell.
 - Bearbeitungszeit in Minuten
 - Auswahl, welche der 14 offiziellen Kompetenzelemente (+ "Sonstige"-Zusatzfragen)
   einbezogen werden, inkl. Schnellfilter je ICB4-Kompetenzbereich
-- "Fokus-Typ"-Regler (reine Übungsfunktion): Anteil Multiple-Choice vs.
-  Freitext, Standard ≈19 % (laut Kursleitung üblicherweise 11–12 von 61
-  Fragen Multiple-Choice)
-- "Multiple/Single-Choice-Fragen zuerst" (Standard: an): bündelt alle
-  Multiple-/Single-Choice-Fragen an den Anfang der Prüfung, wie im echten
-  Portal; abwählen mischt beide Fragetypen zufällig für abwechslungsreicheres Üben
+- "Checkboxfragenanteil"-Regler (reine Übungsfunktion): Anteil Checkbox- vs.
+  Freitext-Fragen, Standard ≈19 % (laut Kursleitung üblicherweise 11–12 von
+  61 Fragen Checkbox-Fragen)
+- "Checkbox-Fragen zuerst" (Standard: an): bündelt alle Checkbox-Fragen an
+  den Anfang der gesamten Prüfung (über alle Kompetenzbereiche hinweg), wie
+  im echten Portal; abwählen mischt beide Fragetypen zufällig je
+  Kompetenzbereich für abwechslungsreicheres Üben — die linke Übersichtsspalte
+  spiegelt das: mit aktiver Bündelung erscheint "Checkboxfragen" als eigene
+  Gruppe vor den vier Kompetenzbereichs-Gruppen, sonst sind beide Fragetypen
+  innerhalb der Kompetenzbereiche gemischt
 
 **Hinweis zur Fragenanzahl:** Die Zertifizierungsstelle veröffentlicht selbst
 keine genaue Gesamtzahl an Prüfungsfragen. Offiziell dokumentiert sind nur: 90
 Minuten Bearbeitungszeit, 14 Kompetenzelemente, 11 davon müssen bestanden
-werden. Die Angaben zu 61 Fragen und ~11–12 Multiple-Choice-Fragen stammen von
-der Kursleitung, nicht von der Zertifizierungsstelle selbst.
+werden. Die Angaben zu 61 Fragen und ~11–12 Checkbox-Fragen stammen von der
+Kursleitung, nicht von der Zertifizierungsstelle selbst.
