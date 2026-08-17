@@ -1108,24 +1108,26 @@ function renderOverview(){
   session.questions.forEach((q, idx) => { if(q.type === 'mc') mcIdxs.push(idx); });
   if(mcIdxs.length > 0) appendCircleGroup(container, 'Checkboxfragen', mcIdxs);
 
-  // Freitext: broken down by Kompetenzelement, since open questions aren't
-  // bundled by topic elsewhere in the UI the way Checkbox questions are.
-  const byKe = new Map();
+  // Freitext: broken down by Kompetenzbereich (Kontext / Persönliches und
+  // Soziales / Methoden und Technisches / Sonstige), same as the original
+  // ICB4-domain grouping.
+  const byDomain = new Map();
   session.questions.forEach((q, idx) => {
     if(q.type !== 'open') return;
-    if(!byKe.has(q.keKey)) byKe.set(q.keKey, []);
-    byKe.get(q.keKey).push(idx);
+    const domain = domainForKe(keMap.get(q.keKey));
+    if(!byDomain.has(domain)) byDomain.set(domain, []);
+    byDomain.get(domain).push(idx);
   });
-  if(byKe.size > 0){
+  if(byDomain.size > 0){
     const freitextSection = document.createElement('div');
     freitextSection.className = 'type-group';
     const header = document.createElement('div');
     header.className = 'type-group-name';
     header.textContent = 'Freitext';
     freitextSection.appendChild(header);
-    for(const ke of KE_LIST){
-      const idxs = byKe.get(ke.key);
-      if(idxs) appendCircleGroup(freitextSection, keLabel(ke), idxs);
+    for(const domain of DOMAIN_ORDER){
+      const idxs = byDomain.get(domain);
+      if(idxs) appendCircleGroup(freitextSection, domain, idxs);
     }
     container.appendChild(freitextSection);
   }
