@@ -902,7 +902,7 @@ function updateSummary(){
   const counts = allocateQuestionCounts(keys, total);
   let actualTotal = 0;
   for(const k of keys) actualTotal += counts.get(k);
-  const shortfall = actualTotal < total ? ` — Fragenpool der Auswahl reicht nur für ${actualTotal}` : '';
+  const shortfall = (actualTotal > 0 && actualTotal < total) ? ` — Fragenpool der Auswahl reicht nur für ${actualTotal}` : '';
   document.getElementById('cfg-summary').textContent =
     `${keys.length} Kompetenzelement(e) ausgewählt · ${actualTotal} Fragen in dieser Prüfung${shortfall}.`;
   const keBadge = document.getElementById('ke-toggle-badge');
