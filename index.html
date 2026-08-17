@@ -77,6 +77,7 @@ button{font-family:inherit;cursor:pointer}
 .ke-weight-value{font-weight:700;color:var(--navy2);min-width:18px;display:inline-block;text-align:right}
 .toolbar-row{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap}
 .main-actions-row .btn{flex:1;text-align:center}
+.fill-row .btn, .fill-row .btn-link{flex:1 1 150px;text-align:center}
 .btn{border:none;border-radius:6px;padding:10px 18px;font-size:14px;font-weight:600}
 .btn-primary{background:var(--green);color:#fff}
 .btn-primary:hover{background:var(--green-d)}
@@ -322,9 +323,9 @@ input[type=range]{accent-color:var(--blue)}
             <label>Google Gemini API-Key (kostenlos)</label>
             <input type="password" id="cfg-ai-key" placeholder="Einfügen, um KI-Bewertung zu aktivieren">
           </div>
-          <div class="toolbar-row">
+          <div class="toolbar-row fill-row">
             <button class="btn btn-primary" id="ai-key-save">Speichern &amp; testen</button>
-            <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" class="btn-link" style="display:inline-flex;align-items:center;text-decoration:none">API-Key erstellen ↗</a>
+            <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" class="btn-link" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">API-Key erstellen ↗</a>
             <button class="btn btn-secondary" id="ai-key-clear">Entfernen</button>
           </div>
           <div class="small-note" id="ai-key-status" style="margin-top:0"></div>
@@ -1412,7 +1413,7 @@ function renderResultsHtml(){
       bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn">✨ Alle offenen Fragen mit KI bewerten (${ungradedOpen})</button>`;
     }
   }
-  html += `<div class="toolbar-row" style="margin-bottom:24px">
+  html += `<div class="toolbar-row fill-row" style="margin-bottom:24px">
     <button class="btn btn-primary" id="restart-btn">Neue Simulation starten</button>
     <button class="btn btn-orange" id="reconfigure-btn">Konfiguration überarbeiten</button>
     ${bulkAiBtnHtml}
