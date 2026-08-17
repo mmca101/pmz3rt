@@ -244,6 +244,7 @@ input[type=range]{accent-color:var(--blue)}
 /* ---------- Mobile: collapse the question overview into a burger-toggled
    slide-in drawer, and tighten up spacing generally ---------- */
 @media (max-width: 760px){
+  .main-actions-row{flex-direction:column}
   .hamburger-btn{display:flex}
   .topbar{padding:8px 10px;gap:6px}
   .topbar .brand{font-size:12.5px;gap:5px}
@@ -297,7 +298,7 @@ input[type=range]{accent-color:var(--blue)}
     die Musterantwort an, und Sie vergleichen diese selbst mit Ihrer eigenen Antwort und markieren per Klick,
     ob sie inhaltlich richtig war.
     <div class="toolbar-row" style="margin-top:8px;margin-bottom:0">
-      <a href="#ai-key-card" id="ai-setup-link" class="btn-link" style="display:inline-block;text-decoration:none">Jetzt kostenlose KI-Bewertung einrichten →</a>
+      <a href="#ai-key-card" id="ai-setup-link" class="btn-link" style="display:block;text-decoration:none;text-align:center">Jetzt kostenlose KI-Auswertung einrichten →</a>
     </div>
   </div>
 
@@ -758,7 +759,7 @@ function renderKeGrid(){
     wrap.innerHTML = `
       <label class="ke-item" title="${keLabel(ke)}">
         <input type="checkbox" data-key="${ke.key}" checked>
-        <span>${ke.name}</span> <span class="cnt">(${ke.count})</span>
+        <span>${ke.name}</span>
       </label>
       <div class="ke-weight-control" title="Gewichtung: mehr = anteilig mehr Fragen aus diesem Thema">
         <input type="range" min="1" max="5" step="1" value="1" class="ke-weight-input" data-key="${ke.key}">
@@ -1442,6 +1443,7 @@ function renderResultsHtml(){
   html += `<div class="filter-row" id="review-filters">
     <button data-f="all">Alle (${session.questions.length})</button>
     <button class="active" data-f="wrong">Falsch / offen</button>
+    <button data-f="correct">Richtig</button>
     <button data-f="mc">Multiple Choice</button>
     <button data-f="open">Freitext</button>
   </div>`;
@@ -1601,6 +1603,10 @@ function renderReviewList(filter){
     else if(filter==='wrong'){
       if(q.type==='mc') show = gradeMC(q) !== true;
       else show = effectiveOpenGrade(q) !== true;
+    }
+    else if(filter==='correct'){
+      if(q.type==='mc') show = gradeMC(q) === true;
+      else show = effectiveOpenGrade(q) === true;
     }
     if(!show) continue;
     list.appendChild(renderReviewItem(q, i));
