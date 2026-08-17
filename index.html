@@ -360,7 +360,7 @@ input[type=range]{accent-color:var(--blue)}
         <summary><span>Checkboxfragenanteil</span><span class="config-section-count" id="focus-toggle-badge"></span></summary>
         <div class="config-section-body">
           <div class="field" style="margin-bottom:4px">
-            <label>Anteil Checkbox- vs. Freitext-Fragen je Kompetenzelement: <strong id="focus-type-label">19% Checkbox / 81% Freitext</strong></label>
+            <label>Anteil Checkbox- vs. Freitext-Fragen: <strong id="focus-type-label">19% Checkbox / 81% Freitext</strong></label>
             <input type="range" id="cfg-focus-type" min="0" max="100" step="1" value="19" style="width:100%">
           </div>
           <div class="warning-note hidden" id="focus-warning-note">
@@ -1506,17 +1506,29 @@ function csvField(val){
   return /["\n\r,;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 }
 
+function verdictText(q){
+  if(q.type === 'mc'){
+    const r = gradeMC(q);
+    return r === null ? 'nicht beantwortet' : (r ? 'richtig' : 'falsch');
+  }
+  const eg = effectiveOpenGrade(q);
+  return eg === undefined ? 'nicht bewertet' : (eg ? 'richtig' : 'falsch');
+}
+
 function downloadAnswersCsv(){
-  const header = ['Kompetenzelement', 'Frage', 'Eigene Antwort', 'Antwortmöglichkeit', 'Ergänzende Informationen'];
+  const header = ['Kompetenzelement', 'Frage', 'Eigene Antwort', 'Antwortmöglichkeit', 'Ergänzende Informationen', 'Bewertung', 'KI-Begründung'];
   const rows = [header];
   for(const q of session.questions){
     const ke = keMap.get(q.keKey);
+    const fb = session.aiFeedback.get(q.id);
     rows.push([
       keLabel(ke),
       q.rawFrage != null ? q.rawFrage : q.stem,
       ownAnswerText(q),
       q.rawAntwort != null ? q.rawAntwort : (q.answer || ''),
-      q.info || ''
+      q.info || '',
+      verdictText(q),
+      fb ? (fb.feedback || fb.error || '') : ''
     ]);
   }
   const csv = rows.map(r => r.map(csvField).join(',')).join('\r\n');
