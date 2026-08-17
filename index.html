@@ -161,6 +161,7 @@ input[type=range]{accent-color:var(--blue)}
 .q-info-box .v{font-size:13.5px;color:var(--pm-navy)}
 .q-heading{font-size:13px;font-weight:700;color:var(--pm-navy);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px}
 .q-stem{background:var(--card);border-radius:var(--radius);padding:18px 20px;font-size:15px;line-height:1.6;white-space:pre-wrap;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:20px}
+.mc-hint{color:var(--muted);font-size:12.5px;margin-bottom:10px}
 
 .options{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
 .option{display:flex;align-items:flex-start;gap:12px;background:var(--card);border:2px solid #e1e5eb;border-radius:8px;padding:12px 16px;cursor:pointer;font-size:14.5px;line-height:1.5}
@@ -367,6 +368,10 @@ input[type=range]{accent-color:var(--blue)}
             Für eine realistische Prüfungssimulation den Standardwert belassen; dieser Regler ist eine reine
             Übungsfunktion und existiert so nicht im echten PM-ZERT-Zertifizierungsportal.
           </div>
+          <label class="ke-item" style="margin-top:10px">
+            <input type="checkbox" id="cfg-mc-first" checked>
+            <span>Multiple/Single-Choice-Fragen zuerst <span class="badge-note">(wie in der echten Prüfung; abwählen für zufällige Reihenfolge beim Üben)</span></span>
+          </label>
         </div>
       </details>
 
@@ -416,6 +421,8 @@ input[type=range]{accent-color:var(--blue)}
       </div>
     </div>
     <ul class="rules-list">
+      <li>Bei Multiple-Choice-Fragen ist genau <strong>eine</strong> Antwort auszuwählen — je nach Fragestellung die
+        zutreffendste (richtige) oder die unzutreffendste (falsche) Option.</li>
       <li>Multiple-Choice-Fragen werden automatisch ausgewertet.</li>
       <li>Offene Fragen werden im Review mit Musterantwort angezeigt und von Ihnen — oder optional per KI — eingeschätzt.</li>
       <li>Für eine aussagekräftige Einschätzung alle 14 offiziellen Kompetenzelemente auswählen.</li>
@@ -699,6 +706,7 @@ function persistConfig(){
       count: document.getElementById('cfg-count').value,
       time: document.getElementById('cfg-time').value,
       focusType: focusSlider.value,
+      mcFirst: document.getElementById('cfg-mc-first').checked,
       keKeys: selectedKEKeys(),
       keWeights: Object.fromEntries(keWeights)
     }));
@@ -715,6 +723,7 @@ function applySavedScalarFields(){
   if(cfg.count) document.getElementById('cfg-count').value = cfg.count;
   if(cfg.time) document.getElementById('cfg-time').value = cfg.time;
   if(cfg.focusType) focusSlider.value = cfg.focusType;
+  if(typeof cfg.mcFirst === 'boolean') document.getElementById('cfg-mc-first').checked = cfg.mcFirst;
 }
 function applySavedKeSelection(){
   const cfg = loadSavedConfig();
@@ -868,6 +877,7 @@ function updateFocusLabel(){
   if(warning) warning.classList.toggle('hidden', v === FOCUS_DEFAULT);
 }
 focusSlider.addEventListener('input', ()=>{ updateFocusLabel(); persistConfig(); });
+document.getElementById('cfg-mc-first').addEventListener('change', persistConfig);
 updateFocusLabel();
 
 // Restore previously-saved count/time/name/focus-type now that every field
@@ -880,6 +890,7 @@ document.getElementById('cfg-reset-btn').addEventListener('click', ()=>{
   document.getElementById('cfg-count').value = '61';
   document.getElementById('cfg-time').value = '90';
   grid.querySelectorAll('input').forEach(el=>el.checked=true);
+  document.getElementById('cfg-mc-first').checked = true;
   focusSlider.value = '19';
   updateFocusLabel();
   updateSummary();
@@ -939,11 +950,13 @@ function startExam(){
     keysByDomain.get(domain).push(k);
   }
 
+  const mcFirst = document.getElementById('cfg-mc-first').checked;
   let selected = [];
   for(const domain of DOMAIN_ORDER){
     const domainKeys = keysByDomain.get(domain);
     if(!domainKeys) continue;
-    let domainQuestions = [];
+    let domainMc = [];
+    let domainOpen = [];
     for(const k of domainKeys){
       const count = keCounts.get(k);
       if(count === 0) continue;
@@ -962,9 +975,14 @@ function startExam(){
       if(shortfall > 0){
         mcTake = mcTake.concat(mcPool.slice(mcTake.length, mcTake.length + shortfall));
       }
-      domainQuestions = domainQuestions.concat(mcTake, openTake);
+      domainMc = domainMc.concat(mcTake);
+      domainOpen = domainOpen.concat(openTake);
     }
-    selected = selected.concat(shuffle(domainQuestions));
+    // "exam true" mode (default): all MC/Single-Choice questions come before
+    // the open questions within each domain group, matching the real portal's
+    // ordering. Unchecking mixes both types randomly, which is only useful
+    // for training variety and not how the actual exam presents questions.
+    selected = selected.concat(mcFirst ? domainMc.concat(domainOpen) : shuffle(domainMc.concat(domainOpen)));
   }
 
   session = {
@@ -1127,6 +1145,7 @@ function renderQuestion(){
   html += `<div class="q-stem">${escapeHtml(q.stem)}</div>`;
 
   if(q.type === 'mc'){
+    html += `<div class="mc-hint">Wählen Sie genau <strong>eine</strong> Antwort — je nach Fragestellung die zutreffendste (richtige) oder die unzutreffendste (falsche) Option.</div>`;
     html += '<div class="options" id="options-list">';
     const a = session.answers.get(q.id);
     for(const opt of q.options){
