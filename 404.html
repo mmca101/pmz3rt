@@ -1027,6 +1027,7 @@ function startExam(){
 
   session = {
     questions: selected,
+    mcFirst,
     answers: new Map(),   // id -> { mc: letter|null, openHtml: string }
     bookmarks: new Set(),
     viewed: new Set(),     // id -> opened at least once, regardless of answer state
@@ -1104,34 +1105,50 @@ function renderOverview(){
   const container = document.getElementById('ov-groups');
   container.innerHTML = '';
 
-  // Checkboxfragen: one flat group (mirrors the "Checkbox-Fragen zuerst"
-  // exam-wide bundling — Kompetenzelement is still shown on hover).
-  const mcIdxs = [];
-  session.questions.forEach((q, idx) => { if(q.type === 'mc') mcIdxs.push(idx); });
-  if(mcIdxs.length > 0) appendCircleGroup(container, 'Checkboxfragen', mcIdxs);
+  if(session.mcFirst){
+    // Checkboxfragen: one flat group (mirrors the "Checkbox-Fragen zuerst"
+    // exam-wide bundling — Kompetenzelement is still shown on hover).
+    const mcIdxs = [];
+    session.questions.forEach((q, idx) => { if(q.type === 'mc') mcIdxs.push(idx); });
+    if(mcIdxs.length > 0) appendCircleGroup(container, 'Checkboxfragen', mcIdxs);
 
-  // Freitext: broken down by Kompetenzbereich (Kontext / Persönliches und
-  // Soziales / Methoden und Technisches / Sonstige), same as the original
-  // ICB4-domain grouping.
-  const byDomain = new Map();
-  session.questions.forEach((q, idx) => {
-    if(q.type !== 'open') return;
-    const domain = domainForKe(keMap.get(q.keKey));
-    if(!byDomain.has(domain)) byDomain.set(domain, []);
-    byDomain.get(domain).push(idx);
-  });
-  if(byDomain.size > 0){
-    const freitextSection = document.createElement('div');
-    freitextSection.className = 'type-group';
-    const header = document.createElement('div');
-    header.className = 'type-group-name';
-    header.textContent = 'Freitext';
-    freitextSection.appendChild(header);
+    // Freitext: broken down by Kompetenzbereich (Kontext / Persönliches und
+    // Soziales / Methoden und Technisches / Sonstige), same as the original
+    // ICB4-domain grouping.
+    const byDomain = new Map();
+    session.questions.forEach((q, idx) => {
+      if(q.type !== 'open') return;
+      const domain = domainForKe(keMap.get(q.keKey));
+      if(!byDomain.has(domain)) byDomain.set(domain, []);
+      byDomain.get(domain).push(idx);
+    });
+    if(byDomain.size > 0){
+      const freitextSection = document.createElement('div');
+      freitextSection.className = 'type-group';
+      const header = document.createElement('div');
+      header.className = 'type-group-name';
+      header.textContent = 'Freitext';
+      freitextSection.appendChild(header);
+      for(const domain of DOMAIN_ORDER){
+        const idxs = byDomain.get(domain);
+        if(idxs) appendCircleGroup(freitextSection, domain, idxs);
+      }
+      container.appendChild(freitextSection);
+    }
+  } else {
+    // Training mode: Checkbox and Freitext questions are mixed within each
+    // domain (not bundled by type), so the overview groups by Kompetenzbereich
+    // only, matching the exam's actual order — no separate Checkbox category.
+    const byDomain = new Map();
+    session.questions.forEach((q, idx) => {
+      const domain = domainForKe(keMap.get(q.keKey));
+      if(!byDomain.has(domain)) byDomain.set(domain, []);
+      byDomain.get(domain).push(idx);
+    });
     for(const domain of DOMAIN_ORDER){
       const idxs = byDomain.get(domain);
-      if(idxs) appendCircleGroup(freitextSection, domain, idxs);
+      if(idxs) appendCircleGroup(container, domain, idxs);
     }
-    container.appendChild(freitextSection);
   }
   refreshCircleStates();
 }
