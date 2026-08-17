@@ -1575,7 +1575,7 @@ function renderResultsHtml(){
     if(session.aiGradingRunning){
       bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn" disabled>⏳ KI-Bewertung läuft…</button>`;
     } else if(ungradedOpen === 0){
-      bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn" disabled>✓ Alle offenen Fragen bereits bewertet</button>`;
+      bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn" disabled>✓ KI-Bewertung abgeschlossen</button>`;
     } else {
       bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn">✨ Alle offenen Fragen mit KI bewerten (${ungradedOpen})</button>`;
     }
