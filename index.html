@@ -81,6 +81,7 @@ button{font-family:inherit;cursor:pointer}
 .fill-row .btn, .fill-row .btn-link{flex:1 1 150px;text-align:center}
 .btn{border:none;border-radius:6px;padding:10px 18px;font-size:14px;font-weight:600}
 .btn-primary{background:var(--green);color:#fff}
+.btn-not-ready{opacity:.55;cursor:not-allowed}
 .btn-primary:hover{background:var(--green-d)}
 .btn-secondary{background:#e6e9ee;color:var(--navy2)}
 .btn-secondary:hover{background:#d9dee6}
@@ -404,7 +405,7 @@ input[type=range]{accent-color:var(--blue)}
     </div>
 
     <div class="toolbar-row main-actions-row" style="margin-top:18px">
-      <button class="btn btn-primary" id="start-btn" disabled>Simulation starten</button>
+      <button class="btn btn-primary btn-not-ready" id="start-btn">Simulation starten</button>
       <button class="btn btn-blue" id="rules-toggle-btn">Regeln anzeigen</button>
       <button class="btn btn-secondary" id="cfg-reset-btn">Standard laden</button>
     </div>
@@ -440,11 +441,11 @@ input[type=range]{accent-color:var(--blue)}
   </div>
 
   <div class="gh-footer">
-    <a href="https://github.com/mmca101/pmz3rt" target="_blank" rel="noopener" class="gh-link">
+    <a href="https://github.com/mmca101/simc3rt" target="_blank" rel="noopener" class="gh-link">
       <svg height="18" width="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
         <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
       </svg>
-      <span>mmca101/pmz3rt</span>
+      <span>mmca101/simc3rt</span>
     </a>
     <span class="version-badge">v0.4</span>
   </div>
@@ -901,7 +902,7 @@ function updateSummary(){
   const counts = allocateQuestionCounts(keys, total);
   let actualTotal = 0;
   for(const k of keys) actualTotal += counts.get(k);
-  const shortfall = actualTotal < total ? ` — Fragenpool der Auswahl reicht nur für ${actualTotal}` : '';
+  const shortfall = (actualTotal > 0 && actualTotal < total) ? ` — Fragenpool der Auswahl reicht nur für ${actualTotal}` : '';
   document.getElementById('cfg-summary').textContent =
     `${keys.length} Kompetenzelement(e) ausgewählt · ${actualTotal} Fragen in dieser Prüfung${shortfall}.`;
   const keBadge = document.getElementById('ke-toggle-badge');
@@ -999,6 +1000,10 @@ let secondsLeft = 0;
 document.getElementById('start-btn').addEventListener('click', startExam);
 
 function startExam(){
+  if(ALL_Q.length === 0){
+    alert('Es ist noch keine Fragenquelle geladen. Bitte zuerst unter "Fragenquelle" eine gültige Google-Sheet-URL eintragen.');
+    return;
+  }
   const totalQuestions = parseInt(document.getElementById('cfg-count').value,10) || 1;
   const timeMinutes = parseInt(document.getElementById('cfg-time').value,10) || 90;
   const mcPercent = parseInt(focusSlider.value, 10);
@@ -2082,7 +2087,7 @@ async function loadQuestions(){
   sheetStatus.className = 'small-note';
   setSheetToggleBadge('wird geladen…');
   sheetReloadBtn.disabled = true;
-  startBtn.disabled = true;
+  startBtn.classList.add('btn-not-ready');
   try{
     const url = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=0`;
     const res = await fetch(url);
@@ -2100,7 +2105,7 @@ async function loadQuestions(){
     sheetStatus.textContent = `✓ ${ALL_Q.length} Fragen geladen (${mcCount} Checkboxfragen, ${ALL_Q.length-mcCount} Freitext).`;
     sheetStatus.className = 'small-note status-ok';
     setSheetToggleBadge(`✓ ${ALL_Q.length} geladen`);
-    startBtn.disabled = false;
+    startBtn.classList.remove('btn-not-ready');
   } catch(err){
     sheetStatus.textContent = '✗ Fehler beim Laden: ' + ((err && err.message) || err) +
       ' — Sheet muss auf "Jeder mit dem Link kann ansehen" freigegeben sein.';
