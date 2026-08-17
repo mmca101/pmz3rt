@@ -849,7 +849,7 @@ function updateSummary(){
   document.getElementById('cfg-summary').textContent =
     `${keys.length} Kompetenzelement(e) ausgewählt · ${actualTotal} Fragen in dieser Prüfung${shortfall}.`;
   const keBadge = document.getElementById('ke-toggle-badge');
-  if(keBadge) keBadge.textContent = `${keys.length}/${KE_LIST.length} ausgewählt`;
+  if(keBadge) keBadge.textContent = KE_LIST.length === 0 ? '(Keine Quelle gefunden)' : `${keys.length}/${KE_LIST.length} ausgewählt`;
 }
 grid.addEventListener('change', ()=>{ updateSummary(); persistConfig(); });
 document.getElementById('cfg-count').addEventListener('input', ()=>{ updateSummary(); persistConfig(); });
@@ -2006,6 +2006,7 @@ async function loadQuestions(){
     sheetStatus.textContent = '✗ Ungültige Google-Sheet-URL.';
     sheetStatus.className = 'small-note status-bad';
     setSheetToggleBadge('✗ ungültige URL');
+    updateSummary();
     return;
   }
   sheetStatus.textContent = 'Lade Fragen…';
