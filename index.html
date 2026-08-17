@@ -147,8 +147,6 @@ input[type=range]{accent-color:var(--blue)}
 .sidebar-close-btn{display:none;background:transparent;border:none;color:#c7d1e0;font-size:22px;line-height:1;padding:0 4px;cursor:pointer}
 .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:39}
 .sidebar-backdrop.visible{display:block}
-.sidebar .type-group{margin-bottom:10px}
-.sidebar .type-group-name{padding:10px 16px 8px;font-size:13px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:4px}
 .sidebar .group{margin-bottom:6px}
 .sidebar .group-name{padding:8px 16px 4px;font-size:11.5px;font-weight:700;color:#9db0cf;text-transform:uppercase;letter-spacing:.3px}
 .circles{display:flex;flex-wrap:wrap;gap:10px;padding:6px 16px 10px}
@@ -354,11 +352,13 @@ input[type=range]{accent-color:var(--blue)}
           <div class="toolbar-row ke-filter-row" style="margin-bottom:10px">
             <button class="btn-link ke-action-btn" id="ke-randomize">🎲 Gewichtung zufällig</button>
             <button class="btn-link" id="ke-all">Alle auswählen</button>
+            <button class="btn-link ke-action-btn" id="ke-none">Auswahl zurücksetzen</button>
+          </div>
+          <div class="toolbar-row ke-filter-row" style="margin-bottom:10px">
             <button class="btn-link" data-domain="Kontext">Kontext</button>
             <button class="btn-link" data-domain="Persönliches und Soziales">Persönliches und Soziales</button>
             <button class="btn-link" data-domain="Methoden und Technisches">Methoden und Technisches</button>
             <button class="btn-link" data-domain="Sonstige">Sonstige</button>
-            <button class="btn-link ke-action-btn" id="ke-none">Auswahl zurücksetzen</button>
           </div>
           <div class="ke-grid" id="ke-grid"></div>
         </div>
@@ -1025,6 +1025,7 @@ function startExam(){
 
   session = {
     questions: selected,
+    mcFirst,
     answers: new Map(),   // id -> { mc: letter|null, openHtml: string }
     bookmarks: new Set(),
     viewed: new Set(),     // id -> opened at least once, regardless of answer state
@@ -1102,34 +1103,28 @@ function renderOverview(){
   const container = document.getElementById('ov-groups');
   container.innerHTML = '';
 
-  // Checkboxfragen: one flat group (mirrors the "Checkbox-Fragen zuerst"
-  // exam-wide bundling — Kompetenzelement is still shown on hover).
-  const mcIdxs = [];
-  session.questions.forEach((q, idx) => { if(q.type === 'mc') mcIdxs.push(idx); });
-  if(mcIdxs.length > 0) appendCircleGroup(container, 'Checkboxfragen', mcIdxs);
+  if(session.mcFirst){
+    // Checkboxfragen: one flat group first (mirrors the "Checkbox-Fragen
+    // zuerst" exam-wide bundling), at the same level as the four
+    // Kompetenzbereich groups below it — no separate "Freitext" wrapper.
+    const mcIdxs = [];
+    session.questions.forEach((q, idx) => { if(q.type === 'mc') mcIdxs.push(idx); });
+    if(mcIdxs.length > 0) appendCircleGroup(container, 'Checkboxfragen', mcIdxs);
+  }
 
-  // Freitext: broken down by Kompetenzbereich (Kontext / Persönliches und
-  // Soziales / Methoden und Technisches / Sonstige), same as the original
-  // ICB4-domain grouping.
+  // Kompetenzbereich groups (Kontext / Persönliches und Soziales / Methoden
+  // und Technisches / Sonstige): only the remaining Freitext questions when
+  // mcFirst, otherwise both types mixed, matching the exam's actual order.
   const byDomain = new Map();
   session.questions.forEach((q, idx) => {
-    if(q.type !== 'open') return;
+    if(session.mcFirst && q.type !== 'open') return;
     const domain = domainForKe(keMap.get(q.keKey));
     if(!byDomain.has(domain)) byDomain.set(domain, []);
     byDomain.get(domain).push(idx);
   });
-  if(byDomain.size > 0){
-    const freitextSection = document.createElement('div');
-    freitextSection.className = 'type-group';
-    const header = document.createElement('div');
-    header.className = 'type-group-name';
-    header.textContent = 'Freitext';
-    freitextSection.appendChild(header);
-    for(const domain of DOMAIN_ORDER){
-      const idxs = byDomain.get(domain);
-      if(idxs) appendCircleGroup(freitextSection, domain, idxs);
-    }
-    container.appendChild(freitextSection);
+  for(const domain of DOMAIN_ORDER){
+    const idxs = byDomain.get(domain);
+    if(idxs) appendCircleGroup(container, domain, idxs);
   }
   refreshCircleStates();
 }
@@ -1530,10 +1525,10 @@ function renderResultsHtml(){
     }
   }
   html += `<div class="toolbar-row fill-row" style="margin-bottom:24px">
-    <button class="btn btn-primary" id="restart-btn">Neue Simulation starten</button>
     <button class="btn btn-orange" id="reconfigure-btn">Konfiguration überarbeiten</button>
-    ${bulkAiBtnHtml}
+    <button class="btn btn-primary" id="restart-btn">Neue Simulation starten</button>
     <button class="btn btn-secondary" id="export-csv-btn">📥 Ergebnisse als CSV speichern</button>
+    ${bulkAiBtnHtml}
   </div>`;
 
   html += '<div class="ke-results">';
