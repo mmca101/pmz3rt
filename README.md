@@ -95,9 +95,15 @@ Nachgebildet aus der Anleitung (Kap. 6.2–6.9):
   lassen sich selbst als richtig/falsch markieren — optional auch per KI
   (siehe unten). Musterantwort, Zusatzinfo und KI-Einschätzung werden dabei
   als einfaches Markdown gerendert (fett, Listen, Überschriften), statt
-  rohen Text mit sichtbaren `**`/`-`/`#`-Zeichen anzuzeigen. Unbeantwortete
-  Fragen (egal ob Checkbox oder offen) zählen sofort als falsch, ohne dass
-  eine Bewertung nötig ist.
+  rohen Text mit sichtbaren `**`/`-`/`#`-Zeichen anzuzeigen. Ist ein
+  Gemini-Key hinterlegt, wird die Musterantwort beim ersten Aufklappen einer
+  Frage zusätzlich einmalig per KI in besser lesbares Markdown umformatiert
+  (Inhalt bleibt unverändert, nur Struktur/Formatierung) — das Ergebnis wird
+  lokal im Browser zwischengespeichert (`localStorage`, geschlüsselt über den
+  Quelltext selbst), sodass dieselbe Frage nicht erneut angefragt wird,
+  solange sich ihr Text im Sheet nicht ändert. Unbeantwortete Fragen (egal ob
+  Checkbox oder offen) zählen sofort als falsch, ohne dass eine Bewertung
+  nötig ist.
 - Ergebnisse als CSV exportierbar (Kompetenzelement, Frage, eigene Antwort,
   Musterantwort, Zusatzinfo, Bewertung, KI-Begründung)
 
