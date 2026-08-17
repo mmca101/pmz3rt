@@ -671,6 +671,62 @@ function stripHtml(html){
   return d.textContent.trim();
 }
 
+// Reformats a Musterantwort into cleaner Markdown (bold key terms, lists
+// where it helps) without changing/adding content — purely readability.
+// Cached in localStorage per exact source text, so the same question is
+// only ever sent to Gemini once per browser (until the sheet text itself
+// changes, which changes the cache key). This only spends the visiting
+// user's own free-tier quota — there is no shared/server-side key.
+const REFORMAT_CACHE_PREFIX = 'simc3rt_reformat_';
+function hashText(str){
+  let h = 5381;
+  for(let i=0;i<str.length;i++){ h = ((h*33) ^ str.charCodeAt(i)) >>> 0; }
+  return h.toString(36);
+}
+function getCachedReformat(rawText){
+  try{ return localStorage.getItem(REFORMAT_CACHE_PREFIX + hashText(rawText)); }
+  catch(e){ return null; }
+}
+function setCachedReformat(rawText, formatted){
+  try{ localStorage.setItem(REFORMAT_CACHE_PREFIX + hashText(rawText), formatted); }
+  catch(e){ /* localStorage full/unavailable — just skip caching, not fatal */ }
+}
+async function aiReformatAnswer(rawText){
+  const apiKey = getAiKey();
+  if(!apiKey) throw new Error('Kein API-Key hinterlegt.');
+  const prompt = 'Formatiere den folgenden Text als gut lesbares Markdown (fett für Kernbegriffe, ' +
+    'Aufzählungen wo sinnvoll, kurze Absätze). Verändere NICHT den Inhalt, füge NICHTS hinzu und lasse ' +
+    'NICHTS weg — nur Formatierung und Struktur dürfen sich ändern. Antworte AUSSCHLIESSLICH mit dem ' +
+    'formatierten Text, ohne Einleitung, ohne Codeblock, ohne umschließende Anführungszeichen.\n\nText:\n' + rawText;
+  const res = await fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + encodeURIComponent(apiKey),
+    {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({contents: [{parts: [{text: prompt}]}]})
+    }
+  );
+  if(!res.ok){
+    const errBody = await res.text().catch(()=> '');
+    throw new Error('API-Fehler ' + res.status + (errBody ? (': ' + errBody.slice(0,200)) : ''));
+  }
+  const data = await res.json();
+  const text = (data.candidates && data.candidates[0] && data.candidates[0].content &&
+    data.candidates[0].content.parts && data.candidates[0].content.parts[0] &&
+    data.candidates[0].content.parts[0].text) || '';
+  return text.replace(/```(markdown)?/gi, '').trim();
+}
+function scheduleReformat(rawText, targetEl){
+  if(!rawText || !getAiKey()) return;
+  const cached = getCachedReformat(rawText);
+  if(cached){ targetEl.innerHTML = renderMarkdownSafe(cached); return; }
+  aiReformatAnswer(rawText).then(formatted => {
+    if(!formatted) return;
+    setCachedReformat(rawText, formatted);
+    targetEl.innerHTML = renderMarkdownSafe(formatted);
+  }).catch(()=>{ /* silently keep the plain-markdown fallback already shown */ });
+}
+
 async function aiGradeOpenQuestion(q, candidateText){
   const apiKey = getAiKey();
   if(!apiKey) throw new Error('Kein API-Key hinterlegt.');
@@ -849,7 +905,7 @@ function updateSummary(){
   document.getElementById('cfg-summary').textContent =
     `${keys.length} Kompetenzelement(e) ausgewählt · ${actualTotal} Fragen in dieser Prüfung${shortfall}.`;
   const keBadge = document.getElementById('ke-toggle-badge');
-  if(keBadge) keBadge.textContent = `${keys.length}/${KE_LIST.length} ausgewählt`;
+  if(keBadge) keBadge.textContent = KE_LIST.length === 0 ? '(Keine Quelle gefunden)' : `${keys.length}/${KE_LIST.length} ausgewählt`;
 }
 grid.addEventListener('change', ()=>{ updateSummary(); persistConfig(); });
 document.getElementById('cfg-count').addEventListener('input', ()=>{ updateSummary(); persistConfig(); });
@@ -1519,7 +1575,7 @@ function renderResultsHtml(){
     if(session.aiGradingRunning){
       bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn" disabled>⏳ KI-Bewertung läuft…</button>`;
     } else if(ungradedOpen === 0){
-      bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn" disabled>✓ Alle offenen Fragen bereits bewertet</button>`;
+      bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn" disabled>✓ KI-Bewertung abgeschlossen</button>`;
     } else {
       bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn">✨ Alle offenen Fragen mit KI bewerten (${ungradedOpen})</button>`;
     }
@@ -1760,8 +1816,8 @@ function renderReviewItem(q, idx){
     bodyHtml = `<div class="rowlbl">Ihre Antwort</div>
       <div class="rowval"><em>keine Antwort eingegeben — zählt als falsch</em></div>
       <div class="rowlbl">Musterantwort</div>
-      <div class="rowval">${escapeHtml(q.answer)}</div>
-      ${q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${escapeHtml(q.info)}</div>` : ''}`;
+      <div class="rowval musterantwort">${renderMarkdownSafe(q.answer)}</div>
+      ${q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${renderMarkdownSafe(q.info)}</div>` : ''}`;
   } else {
     const a = session.answers.get(q.id);
     const sg = session.selfGrade.get(q.id);
@@ -1773,7 +1829,7 @@ function renderReviewItem(q, idx){
             : '<span class="tag pending">Noch nicht bewertet</span>';
     let fbHtml = '';
     if(fb && fb.feedback){
-      fbHtml = `<div class="ai-feedback"><strong>KI-Einschätzung:</strong> ${escapeHtml(fb.feedback)}</div>`;
+      fbHtml = `<div class="ai-feedback"><strong>KI-Einschätzung:</strong> ${renderMarkdownSafe(fb.feedback)}</div>`;
     } else if(fb && fb.error){
       fbHtml = `<div class="ai-feedback error"><strong>KI-Bewertung fehlgeschlagen:</strong> ${escapeHtml(fb.error)}</div>`;
     }
@@ -1788,8 +1844,8 @@ function renderReviewItem(q, idx){
     bodyHtml = `<div class="rowlbl">Ihre Antwort</div>
       <div class="rowval">${a.openHtml}</div>
       <div class="rowlbl">Musterantwort</div>
-      <div class="rowval">${escapeHtml(q.answer)}</div>
-      ${q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${escapeHtml(q.info)}</div>` : ''}
+      <div class="rowval musterantwort">${renderMarkdownSafe(q.answer)}</div>
+      ${q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${renderMarkdownSafe(q.info)}</div>` : ''}
       ${fbHtml}
       <div class="self-grade-btns">
         <button data-g="true" class="${sg===true?'chosen-ok':''}">War richtig</button>
@@ -1842,6 +1898,19 @@ function renderReviewItem(q, idx){
     });
   }
 
+  const musterEl = div.querySelector('.musterantwort');
+  if(musterEl){
+    const detailsEl = div.querySelector('details');
+    let reformatRequested = false;
+    const triggerReformat = () => {
+      if(reformatRequested || !detailsEl.open) return;
+      reformatRequested = true;
+      scheduleReformat(q.answer, musterEl);
+    };
+    triggerReformat(); // covers items that render already open
+    detailsEl.addEventListener('toggle', triggerReformat);
+  }
+
   return div;
 }
 
@@ -1855,6 +1924,39 @@ function escapeHtml(str){
   const d = document.createElement('div');
   d.textContent = str == null ? '' : String(str);
   return d.innerHTML;
+}
+
+// Minimal, safe markdown-ish renderer for Musterantwort / KI-Feedback text
+// (sheet-authored answers and AI responses often use **bold**, `code`, lists,
+// and headings for readability). Escapes first, then only ever introduces a
+// small fixed set of formatting tags — never raw HTML passthrough, so this
+// is safe to use on untrusted/AI-generated text.
+function renderMarkdownSafe(str){
+  if(str == null || str === '') return '';
+  const lines = escapeHtml(str).split(/\r?\n/);
+  let html = '';
+  let inList = false;
+  const closeList = () => { if(inList){ html += '</ul>'; inList = false; } };
+  const inline = (s) => s
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*(?!\*)(.+?)\*(?!\*)/g, '$1<em>$2</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>');
+  for(const rawLine of lines){
+    const line = rawLine.trim();
+    if(line === ''){ closeList(); continue; }
+    const heading = /^#{1,6}\s+(.*)$/.exec(line);
+    if(heading){ closeList(); html += `<strong>${inline(heading[1])}</strong><br>`; continue; }
+    const listItem = /^[-*]\s+(.*)$/.exec(line);
+    if(listItem){
+      if(!inList){ html += '<ul>'; inList = true; }
+      html += `<li>${inline(listItem[1])}</li>`;
+      continue;
+    }
+    closeList();
+    html += inline(line) + '<br>';
+  }
+  closeList();
+  return html;
 }
 
 // ---------- live question loading from Google Sheets ----------
@@ -1973,6 +2075,7 @@ async function loadQuestions(){
     sheetStatus.textContent = '✗ Ungültige Google-Sheet-URL.';
     sheetStatus.className = 'small-note status-bad';
     setSheetToggleBadge('✗ ungültige URL');
+    updateSummary();
     return;
   }
   sheetStatus.textContent = 'Lade Fragen…';
