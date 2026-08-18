@@ -165,6 +165,10 @@ input[type=range]{accent-color:var(--blue)}
 .q-heading{font-size:13px;font-weight:700;color:var(--pm-navy);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px}
 .q-stem{background:var(--card);border-radius:var(--radius);padding:18px 20px;font-size:15px;line-height:1.6;white-space:pre-wrap;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:20px}
 .mc-hint{color:var(--muted);font-size:12.5px;margin-bottom:10px}
+.cheat-panel{margin-top:20px;padding:14px 16px;background:#fff6e9;border:1px dashed var(--amber);border-radius:8px}
+.cheat-panel .cheat-label{font-size:11.5px;font-weight:700;color:var(--amber-d);text-transform:uppercase;letter-spacing:.3px}
+.cheat-panel .rowlbl{font-size:11.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-top:8px}
+.cheat-panel .rowval{font-size:13.5px;line-height:1.5;white-space:pre-wrap;margin-top:2px}
 
 .options{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
 .option{display:flex;align-items:flex-start;gap:12px;background:var(--card);border:2px solid #e1e5eb;border-radius:8px;padding:12px 16px;cursor:pointer;font-size:14.5px;line-height:1.5}
@@ -325,7 +329,7 @@ input[type=range]{accent-color:var(--blue)}
 
     <div class="config-toggles">
       <details class="config-section" id="ai-key-card">
-        <summary><span>KI-Auswertung</span><span class="config-section-count" id="ai-toggle-badge"></span></summary>
+        <summary><span>Ergebnisauswertung</span><span class="config-section-count" id="ai-toggle-badge"></span></summary>
         <div class="config-section-body">
           <div class="field">
             <label>Google Gemini API-Key (kostenlos)</label>
@@ -344,6 +348,10 @@ input[type=range]{accent-color:var(--blue)}
             läuft über keinen Server dieser Anwendung. Ohne Key müssen die offenen Fragen zur Musterlösung selbst
             abgeglichen und abgeschätzt werden!
           </div>
+          <label class="ke-item" style="margin-top:14px">
+            <input type="checkbox" id="cfg-cheat-mode">
+            <span>Cheat-Modus <span class="badge-note">(zeigt Musterantwort/richtige Antwort direkt auf jeder Fragenseite, statt erst im Ergebnis)</span></span>
+          </label>
         </div>
       </details>
 
@@ -812,6 +820,7 @@ function persistConfig(){
       time: document.getElementById('cfg-time').value,
       focusType: focusSlider.value,
       mcFirst: document.getElementById('cfg-mc-first').checked,
+      cheatMode: document.getElementById('cfg-cheat-mode').checked,
       keKeys: selectedKEKeys(),
       keWeights: Object.fromEntries(keWeights)
     }));
@@ -847,6 +856,8 @@ function updateShareableUrl(){
 
   if(!document.getElementById('cfg-mc-first').checked) params.set('mcf', '0');
 
+  if(document.getElementById('cfg-cheat-mode').checked) params.set('cheat', '1');
+
   if(KE_LIST.length > 0){
     const selected = selectedKEKeys();
     if(selected.length !== KE_LIST.length) params.set('ke', selected.join(','));
@@ -876,10 +887,13 @@ function applySavedScalarFields(){
   const focusType = params.get('f') || cfg.focusType;
   const mcfParam = params.get('mcf');
   const mcFirst = mcfParam !== null ? (mcfParam === '1') : cfg.mcFirst;
+  const cheatParam = params.get('cheat');
+  const cheatMode = cheatParam !== null ? (cheatParam === '1') : cfg.cheatMode;
   if(count) document.getElementById('cfg-count').value = count;
   if(time) document.getElementById('cfg-time').value = time;
   if(focusType) focusSlider.value = focusType;
   if(typeof mcFirst === 'boolean') document.getElementById('cfg-mc-first').checked = mcFirst;
+  if(typeof cheatMode === 'boolean') document.getElementById('cfg-cheat-mode').checked = cheatMode;
 }
 function applySavedKeSelection(){
   const params = new URLSearchParams(location.search);
@@ -1045,6 +1059,7 @@ function updateFocusLabel(){
 }
 focusSlider.addEventListener('input', ()=>{ updateFocusLabel(); persistConfig(); });
 document.getElementById('cfg-mc-first').addEventListener('change', persistConfig);
+document.getElementById('cfg-cheat-mode').addEventListener('change', persistConfig);
 updateFocusLabel();
 
 // Restore previously-saved count/time/name/focus-type now that every field
@@ -1058,6 +1073,7 @@ document.getElementById('cfg-reset-btn').addEventListener('click', ()=>{
   document.getElementById('cfg-time').value = '90';
   grid.querySelectorAll('input[type=checkbox]').forEach(el=>el.checked=true);
   document.getElementById('cfg-mc-first').checked = true;
+  document.getElementById('cfg-cheat-mode').checked = false;
   focusSlider.value = '19';
   randomizeWeights(); // true out-of-the-box default is a fresh random spread, not all-1×
   updateFocusLabel();
@@ -1406,6 +1422,54 @@ if(readerSupported){
   });
 }
 
+// ---------- Cheat-Modus: shows the correct answer / Musterantwort (and an
+// on-demand AI evaluation for open questions) directly on each question's
+// page during the exam, instead of only in the results review afterwards.
+// Off by default — purely a practice aid.
+function renderCheatPanel(q){
+  let body;
+  if(q.type === 'mc'){
+    const correctOpt = q.options.find(o=>o.letter===q.correct);
+    body = `<div class="rowlbl">Richtige Antwort</div>
+      <div class="rowval">${q.correct}) ${escapeHtml(correctOpt.text)}</div>`;
+  } else {
+    const fb = session.aiFeedback.get(q.id);
+    let fbHtml = '';
+    if(fb && fb.feedback){
+      fbHtml = `<div class="ai-feedback"><strong>KI-Einschätzung:</strong> ${renderMarkdownSafe(fb.feedback)}</div>`;
+    } else if(fb && fb.error){
+      fbHtml = `<div class="ai-feedback error"><strong>KI-Bewertung fehlgeschlagen:</strong> ${escapeHtml(fb.error)}</div>`;
+    }
+    let aiBtnHtml = '';
+    if(getAiKey() && !(fb && fb.feedback)){
+      aiBtnHtml = `<button class="ai-grade-btn" id="cheat-ai-btn" style="margin-top:10px">${fb && fb.error ? '🔁 KI erneut versuchen' : '✨ Mit KI bewerten'}</button>`;
+    }
+    body = `<div class="rowlbl">Musterantwort</div>
+      <div class="rowval">${renderMarkdownSafe(q.answer)}</div>
+      ${q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${renderMarkdownSafe(q.info)}</div>` : ''}
+      ${fbHtml}${aiBtnHtml}`;
+  }
+  return `<div class="cheat-panel" id="cheat-panel">
+    <div class="cheat-label">🔓 Cheat-Modus</div>
+    ${body}
+  </div>`;
+}
+function wireCheatPanel(q){
+  const cheatAiBtn = document.getElementById('cheat-ai-btn');
+  if(cheatAiBtn){
+    cheatAiBtn.addEventListener('click', async ()=>{
+      saveCurrentAnswer();
+      const mySession = session;
+      cheatAiBtn.disabled = true;
+      cheatAiBtn.textContent = 'Wird bewertet…';
+      await runAiGradeQuestion(mySession, q);
+      if(session !== mySession) return; // a new exam was started meanwhile
+      const panel = document.getElementById('cheat-panel');
+      if(panel){ panel.outerHTML = renderCheatPanel(q); wireCheatPanel(q); }
+    });
+  }
+}
+
 function renderQuestion(){
   readerStop();
   const q = session.questions[currentIndex];
@@ -1455,6 +1519,10 @@ function renderQuestion(){
     </div>`;
   }
 
+  if(document.getElementById('cfg-cheat-mode')?.checked){
+    html += renderCheatPanel(q);
+  }
+
   html += `<div class="bottom-nav">
     <button class="btn btn-secondary" id="bottom-prev">&#8592; Vorherige Frage</button>
     <button class="btn btn-primary" id="bottom-next">${currentIndex===total-1 ? 'Zum Abschluss' : 'Nächste Frage →'}</button>
@@ -1498,6 +1566,7 @@ function renderQuestion(){
   document.getElementById('bottom-prev').addEventListener('click', goPrev);
   document.getElementById('bottom-next').addEventListener('click', goNext);
 
+  wireCheatPanel(q);
   refreshCircleStates();
 }
 
@@ -1735,9 +1804,9 @@ function renderResultsHtml(){
 
   html += `<div class="filter-row" id="review-filters">
     <button data-f="all">Alle (${session.questions.length})</button>
-    <button class="active" data-f="wrong">Falsch / offen</button>
+    <button class="active" data-f="wrong">Falsch</button>
     <button data-f="correct">Richtig</button>
-    <button data-f="mc">Checkboxfragen</button>
+    <button data-f="mc">Checkbox</button>
     <button data-f="open">Freitext</button>
   </div>`;
 
