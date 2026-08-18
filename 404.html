@@ -1539,8 +1539,11 @@ function cheatResultBody(q){
   const sg = session.selfGrade.get(q.id); // set by AI grading or manual self-grade below
   let fbHtml = '';
   if(fb && fb.feedback){
-    const fbClass = sg === true ? 'correct' : sg === false ? 'wrong' : '';
-    fbHtml = `<div class="ai-feedback ${fbClass}"><strong>KI-Einschätzung:</strong> ${renderMarkdownSafe(fb.feedback)}</div>`;
+    // "✓ Richtig" already says everything a correct verdict needs — the
+    // written reasoning only earns its space when something needs explaining.
+    if(sg !== true){
+      fbHtml = `<div class="ai-feedback wrong"><strong>KI-Einschätzung:</strong> ${renderMarkdownSafe(fb.feedback)}</div>`;
+    }
   } else if(fb && fb.error){
     fbHtml = `<div class="ai-feedback error"><strong>KI-Bewertung fehlgeschlagen:</strong> ${escapeHtml(fb.error)}</div>`;
   }
