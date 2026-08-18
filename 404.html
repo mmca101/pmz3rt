@@ -111,6 +111,7 @@ button{font-family:inherit;cursor:pointer}
 .small-note.status-ok{color:var(--green-d);font-weight:600}
 .small-note.status-bad{color:var(--danger);font-weight:600}
 .summary-line{font-size:13px;color:var(--muted);margin-bottom:10px}
+.summary-line.status-bad{color:var(--danger);font-weight:600}
 .badge-note{font-size:11px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0}
 .warning-note{background:#fff6e9;border:1px solid var(--amber);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--amber-d);line-height:1.5;margin-top:12px}
 .rules-card{background:#eaf1ff;border:1px solid #b9d0f5;border-radius:10px;padding:20px 22px;margin-top:18px}
@@ -362,7 +363,7 @@ input[type=range]{accent-color:var(--blue)}
         <input type="number" id="cfg-time" min="5" max="240" value="90">
       </div>
     </div>
-    <div class="summary-line" id="cfg-summary">wird berechnet…</div>
+    <div class="summary-line hidden" id="cfg-summary"></div>
 
     <div class="config-toggles">
       <details class="config-section" id="ai-key-card">
@@ -379,7 +380,7 @@ input[type=range]{accent-color:var(--blue)}
           </div>
           <div class="toolbar-row fill-row">
             <button class="btn btn-primary" id="ai-key-save">Speichern &amp; testen</button>
-            <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" class="btn-link" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">API-Key erstellen ↗</a>
+            <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" class="btn-link" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">API-Key erstellen</a>
             <button class="btn btn-secondary" id="ai-key-clear">Entfernen</button>
           </div>
           <div class="small-note" id="ai-key-status" style="margin-top:0"></div>
@@ -1124,9 +1125,15 @@ function updateSummary(){
   const counts = allocateQuestionCounts(keys, total);
   let actualTotal = 0;
   for(const k of keys) actualTotal += counts.get(k);
-  const shortfall = (actualTotal > 0 && actualTotal < total) ? ` — Fragenpool der Auswahl reicht nur für ${actualTotal}` : '';
-  document.getElementById('cfg-summary').textContent =
-    `${keys.length} Kompetenzelement(e) ausgewählt · ${actualTotal} Fragen in dieser Prüfung${shortfall}.`;
+  // The plain "X Kompetenzelemente ausgewählt · Y Fragen" restatement is
+  // redundant with the Kompetenzelemente badge and the Fragenanzahl field —
+  // this line only needs to appear to flag a genuine shortfall.
+  const summaryEl = document.getElementById('cfg-summary');
+  const hasShortfall = actualTotal > 0 && actualTotal < total;
+  summaryEl.textContent = hasShortfall
+    ? `Fragenpool der Auswahl reicht nur für ${actualTotal} von ${total} Fragen.` : '';
+  summaryEl.classList.toggle('hidden', !hasShortfall);
+  summaryEl.classList.toggle('status-bad', hasShortfall);
   const keBadge = document.getElementById('ke-toggle-badge');
   if(keBadge) keBadge.textContent = KE_LIST.length === 0 ? '(Keine Quelle gefunden)' : `${keys.length}/${KE_LIST.length} ausgewählt`;
   // No point showing the selection filters/grid when there's nothing loaded
@@ -2062,7 +2069,7 @@ function renderResultsHtml(){
         </div>
         <div class="toolbar-row fill-row">
           <button class="btn btn-primary" id="results-ai-key-save">Speichern &amp; testen</button>
-          <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" class="btn-link" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">API-Key erstellen ↗</a>
+          <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" class="btn-link" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">API-Key erstellen</a>
         </div>
         <div class="small-note" id="results-ai-key-status" style="margin-top:0"></div>
         <div class="small-note">
