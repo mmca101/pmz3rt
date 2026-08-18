@@ -79,6 +79,10 @@ button{font-family:inherit;cursor:pointer}
 .ke-weight-value{font-weight:700;color:var(--navy2);min-width:18px;display:inline-block;text-align:right}
 .toolbar-row{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap}
 .main-actions-row .btn{flex:1;text-align:center}
+/* Desktop: "unwrap" this grouping div entirely so Regeln/Standard laden
+   become direct flex siblings of Simulation starten again — the original
+   equal three-way split. Only re-wrapped into an actual row on mobile. */
+.secondary-actions-row{display:contents}
 .fill-row .btn, .fill-row .btn-link{flex:1 1 150px;text-align:center}
 .btn{border:none;border-radius:6px;padding:10px 18px;font-size:14px;font-weight:600}
 .btn:disabled{opacity:.55;cursor:not-allowed}
@@ -285,6 +289,8 @@ input[type=range]{accent-color:var(--blue)}
    slide-in drawer, and tighten up spacing generally ---------- */
 @media (max-width: 760px){
   .main-actions-row{flex-direction:column}
+  .secondary-actions-row{display:flex;gap:10px}
+  .field{min-width:120px}
   .hamburger-btn{display:flex}
   .topbar{padding:8px 10px;gap:6px}
   .topbar .brand{font-size:12.5px;gap:5px}
@@ -452,8 +458,10 @@ input[type=range]{accent-color:var(--blue)}
 
     <div class="toolbar-row main-actions-row" style="margin-top:18px">
       <button class="btn btn-primary btn-not-ready" id="start-btn">Simulation starten</button>
-      <button class="btn btn-blue" id="rules-toggle-btn">Regeln anzeigen</button>
-      <button class="btn btn-secondary" id="cfg-reset-btn">Standard laden</button>
+      <div class="toolbar-row secondary-actions-row">
+        <button class="btn btn-blue" id="rules-toggle-btn">Regeln anzeigen</button>
+        <button class="btn btn-secondary" id="cfg-reset-btn">Standard laden</button>
+      </div>
     </div>
   </div>
 
