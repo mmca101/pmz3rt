@@ -1131,7 +1131,10 @@ grid.addEventListener('change', ()=>{ updateSummary(); persistConfig(); });
 document.getElementById('cfg-count').addEventListener('input', ()=>{ updateSummary(); persistConfig(); });
 document.getElementById('cfg-time').addEventListener('input', persistConfig);
 document.getElementById('ke-all').addEventListener('click', ()=>{
-  grid.querySelectorAll('input').forEach(el=>el.checked=true); updateSummary(); persistConfig();
+  const boxes = [...grid.querySelectorAll('input[type=checkbox]')];
+  const allChecked = boxes.length > 0 && boxes.every(el=>el.checked);
+  boxes.forEach(el=>el.checked = !allChecked);
+  updateSummary(); persistConfig();
 });
 document.getElementById('ke-none').addEventListener('click', ()=>{
   grid.querySelectorAll('input[type=checkbox]').forEach(el=>el.checked=false);
@@ -1145,10 +1148,10 @@ document.getElementById('ke-none').addEventListener('click', ()=>{
 });
 document.querySelectorAll('button[data-domain]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    grid.querySelectorAll('input').forEach(el=>{
-      const ke = keMap.get(el.dataset.key);
-      el.checked = domainForKe(ke) === btn.dataset.domain;
-    });
+    const boxes = [...grid.querySelectorAll('input[type=checkbox]')]
+      .filter(el => domainForKe(keMap.get(el.dataset.key)) === btn.dataset.domain);
+    const allChecked = boxes.length > 0 && boxes.every(el=>el.checked);
+    boxes.forEach(el=>el.checked = !allChecked); // toggles just this domain — other domains' selections are untouched
     updateSummary();
     persistConfig();
   });
