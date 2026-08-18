@@ -90,6 +90,8 @@ button{font-family:inherit;cursor:pointer}
 .btn-blue:hover{background:var(--pm-blue-d)}
 .btn-orange{background:var(--amber);color:#fff}
 .btn-orange:hover{background:var(--amber-d)}
+.btn-cheat{background:#fff6e9;color:var(--amber-d);border:1px dashed var(--amber)}
+.btn-cheat:hover{background:#ffedcf}
 .btn-link{background:rgba(29,78,216,.08);color:var(--blue);padding:10px 18px;border-radius:6px;font-size:14px;font-weight:600;border:1px solid rgba(29,78,216,.15)}
 .btn-link:hover{background:rgba(29,78,216,.15)}
 .ke-filter-row{gap:6px}
@@ -168,8 +170,13 @@ input[type=range]{accent-color:var(--blue)}
 .mc-hint{color:var(--muted);font-size:12.5px;margin-bottom:10px}
 .cheat-panel{margin-top:20px;padding:14px 16px;background:#fff6e9;border:1px dashed var(--amber);border-radius:8px}
 .cheat-panel .cheat-label{font-size:11.5px;font-weight:700;color:var(--amber-d);text-transform:uppercase;letter-spacing:.3px}
+.cheat-panel #cheat-result{margin-top:6px;font-size:13.5px;color:var(--text)}
 .cheat-panel .rowlbl{font-size:11.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-top:8px}
 .cheat-panel .rowval{font-size:13.5px;line-height:1.5;white-space:pre-wrap;margin-top:2px}
+.cheat-panel .cheat-status{font-weight:700;font-size:14.5px}
+.cheat-panel .cheat-status.ok{color:var(--green-d)}
+.cheat-panel .cheat-status.bad{color:var(--danger)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
 .options{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
 .option{display:flex;align-items:flex-start;gap:12px;background:var(--card);border:2px solid #e1e5eb;border-radius:8px;padding:12px 16px;cursor:pointer;font-size:14.5px;line-height:1.5}
@@ -177,6 +184,10 @@ input[type=range]{accent-color:var(--blue)}
 .option.selected{border-color:var(--pm-blue);background:var(--pm-info-bg)}
 .option .letter{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:#e6e9ee;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px}
 .option.selected .letter{background:var(--pm-blue);color:#fff}
+.option.cheat-correct{border-color:var(--green);background:#eaf7ee}
+.option.cheat-correct .letter{background:var(--green);color:#fff}
+.option.cheat-wrong{border-color:var(--danger);background:#fbeaea}
+.option.cheat-wrong .letter{background:var(--danger);color:#fff}
 
 /* Primary buttons within the actual exam-taking flow use the real portal's
    accent blue instead of the practice-tool green used on the config screen. */
@@ -192,6 +203,10 @@ input[type=range]{accent-color:var(--blue)}
 .rte:empty:before{content:attr(data-placeholder);color:var(--muted)}
 
 .bottom-nav{display:flex;justify-content:space-between;margin-top:6px}
+.bottom-nav.has-cheat{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+.bottom-nav.has-cheat #bottom-prev{justify-self:start}
+.bottom-nav.has-cheat #bottom-next{justify-self:end}
+.bottom-nav.has-cheat #cheat-reveal-btn{white-space:nowrap}
 
 /* ---------- Modal ---------- */
 .modal-overlay{position:fixed;inset:0;background:rgba(10,16,30,.55);display:flex;align-items:center;justify-content:center;z-index:50}
@@ -288,6 +303,8 @@ input[type=range]{accent-color:var(--blue)}
   .q-stem{padding:14px 16px;font-size:14px}
   .bottom-nav{flex-direction:column-reverse;gap:8px}
   .bottom-nav button{width:100%;text-align:center}
+  .bottom-nav.has-cheat{gap:6px}
+  .bottom-nav.has-cheat button{width:auto;padding:8px 10px;font-size:12px}
   .rte{min-height:130px}
 }
 </style>
@@ -338,8 +355,8 @@ input[type=range]{accent-color:var(--blue)}
           </label>
           <hr class="config-divider">
           <div class="field">
-            <label>Google Gemini API-Key (kostenlos)</label>
-            <input type="password" id="cfg-ai-key" placeholder="Einfügen, um KI-Bewertung zu aktivieren">
+            <label>Kostenlose KI-Auswertungen aktivieren</label>
+            <input type="password" id="cfg-ai-key" placeholder="Google Gemini API-Key hier einfügen">
           </div>
           <div class="toolbar-row fill-row">
             <button class="btn btn-primary" id="ai-key-save">Speichern &amp; testen</button>
@@ -532,6 +549,11 @@ let ALL_Q = [];
 let keMap = new Map();
 let KE_LIST = [];
 let keWeights = new Map(); // keKey -> weight (1-5, default 1 = equal share)
+// Tracks whether keWeights reflect a deliberate choice (slider drag, "Zufällig
+// verteilen" click, or restored from a saved/shared config) vs. the automatic
+// random spread applied on every fresh load/reset — only the former belongs
+// in the shareable URL, so a truly untouched default stays a bare ?sheet=...
+let weightsCustomized = false;
 
 // ---------- derive competence element list ----------
 function keSortKey(k){ return k.code ? k.code : 'zzzz_' + k.name; }
@@ -574,12 +596,12 @@ const manualGradingNote = document.getElementById('manual-grading-note');
 // reality: shown whenever there's no key, the key is invalid, or a later
 // grading call revealed the key stopped working — never just because a
 // string happens to sit in localStorage.
-let aiStatusShort = 'KI –';
+let aiStatusShort = 'KI';
 function updateToggleBadge(){
   const badge = document.getElementById('ai-toggle-badge');
   if(!badge) return;
   const cheatOn = document.getElementById('cfg-cheat-mode')?.checked;
-  badge.textContent = aiStatusShort + ' / Cheats ' + (cheatOn ? '✓' : '–');
+  badge.textContent = aiStatusShort + ' / Cheats' + (cheatOn ? ' ✓' : '');
 }
 function setAiToggleBadge(kiShort){
   aiStatusShort = kiShort;
@@ -590,7 +612,7 @@ async function refreshAiKeyStatus(){
   if(!key){
     setAiKeyStatus('', null);
     manualGradingNote.classList.remove('hidden');
-    setAiToggleBadge('KI –');
+    setAiToggleBadge('KI');
     return;
   }
   setAiKeyStatus('Key wird geprüft…', null);
@@ -634,7 +656,7 @@ aiKeySaveBtn.addEventListener('click', async ()=>{
     localStorage.removeItem(AI_KEY_STORAGE);
     setAiKeyStatus('Kein Key eingegeben.', null);
     manualGradingNote.classList.remove('hidden');
-    setAiToggleBadge('KI –');
+    setAiToggleBadge('KI');
     return;
   }
   aiKeySaveBtn.disabled = true;
@@ -824,15 +846,19 @@ function loadSavedConfig(){
 }
 function persistConfig(){
   try{
-    localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify({
+    const cfg = {
       count: document.getElementById('cfg-count').value,
       time: document.getElementById('cfg-time').value,
       focusType: focusSlider.value,
       mcFirst: document.getElementById('cfg-mc-first').checked,
       cheatMode: document.getElementById('cfg-cheat-mode').checked,
-      keKeys: selectedKEKeys(),
-      keWeights: Object.fromEntries(keWeights)
-    }));
+      keKeys: selectedKEKeys()
+    };
+    // Only remember weights that were a deliberate choice — otherwise the
+    // auto-random default spread gets snapshotted here and then wrongly
+    // treated as "customized" on the next load (see weightsCustomized).
+    if(weightsCustomized) cfg.keWeights = Object.fromEntries(keWeights);
+    localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(cfg));
   } catch(e){ /* localStorage unavailable — persistence is a nice-to-have, not required */ }
   updateShareableUrl();
 }
@@ -872,9 +898,11 @@ function updateShareableUrl(){
     if(selected.length !== KE_LIST.length) params.set('ke', selected.join(','));
   }
 
-  const nonDefaultWeights = [...keWeights.entries()].filter(([, v]) => v !== 1);
-  if(nonDefaultWeights.length > 0){
-    params.set('kw', nonDefaultWeights.map(([k, v]) => `${k}:${v}`).join(','));
+  if(weightsCustomized){
+    const nonDefaultWeights = [...keWeights.entries()].filter(([, v]) => v !== 1);
+    if(nonDefaultWeights.length > 0){
+      params.set('kw', nonDefaultWeights.map(([k, v]) => `${k}:${v}`).join(','));
+    }
   }
 
   const query = params.toString();
@@ -925,6 +953,7 @@ function applySavedKeSelection(){
     });
   }
   if(keWeightsSource && typeof keWeightsSource === 'object'){
+    weightsCustomized = true;
     grid.querySelectorAll('.ke-weight-input').forEach(input=>{
       const saved = keWeightsSource[input.dataset.key];
       if(saved){
@@ -961,10 +990,12 @@ function renderKeGrid(){
       const v = parseInt(input.value, 10);
       keWeights.set(input.dataset.key, v);
       grid.querySelector(`.ke-weight-value[data-key-value="${input.dataset.key}"]`).textContent = `${v}×`;
+      weightsCustomized = true;
       updateSummary();
       persistConfig();
     });
   });
+  weightsCustomized = false;
   randomizeWeights();
   applySavedKeSelection();
 }
@@ -980,6 +1011,7 @@ function randomizeWeights(){
 
 document.getElementById('ke-randomize').addEventListener('click', ()=>{
   randomizeWeights();
+  weightsCustomized = true;
   updateSummary();
   persistConfig();
 });
@@ -1086,6 +1118,7 @@ document.getElementById('cfg-reset-btn').addEventListener('click', ()=>{
   document.getElementById('cfg-cheat-mode').checked = false;
   focusSlider.value = '19';
   randomizeWeights(); // true out-of-the-box default is a fresh random spread, not all-1×
+  weightsCustomized = false;
   updateFocusLabel();
   updateSummary();
   updateToggleBadge();
@@ -1212,6 +1245,7 @@ function startExam(){
     viewed: new Set(),     // id -> opened at least once, regardless of answer state
     selfGrade: new Map(), // id -> true/false (open questions review)
     aiFeedback: new Map(), // id -> {feedback, error} from AI grading
+    cheatRevealed: new Set(), // id -> Cheat-Modus result already revealed for this question
     aiAutoRan: false,
     aiGradingRunning: false,
     aiKeyRecheckDone: false,
@@ -1437,35 +1471,80 @@ if(readerSupported){
 // on-demand AI evaluation for open questions) directly on each question's
 // page during the exam, instead of only in the results review afterwards.
 // Off by default — purely a practice aid.
-function renderCheatPanel(q){
-  let body;
+// MC gets marked right on the option itself (color, matching the results
+// page's Richtig/Falsch language) instead of restating it as text — the
+// sr-only notes keep that accessible without a screen reader needing to
+// stumble onto the color.
+function applyCheatMcColoring(q){
+  const a = session.answers.get(q.id);
+  document.querySelectorAll('#options-list .option').forEach(el=>{
+    el.classList.remove('cheat-correct', 'cheat-wrong');
+    const oldNote = el.querySelector('.cheat-sr-note');
+    if(oldNote) oldNote.remove();
+    const letter = el.dataset.letter;
+    if(letter === q.correct){
+      el.classList.add('cheat-correct');
+      el.insertAdjacentHTML('beforeend', '<span class="sr-only cheat-sr-note"> (richtige Antwort)</span>');
+    } else if(a && a.mc === letter){
+      el.classList.add('cheat-wrong');
+      el.insertAdjacentHTML('beforeend', '<span class="sr-only cheat-sr-note"> (Ihre Auswahl, leider falsch)</span>');
+    }
+  });
+}
+// Mirrors the results page's one-time AI markdown reformat of the
+// Musterantwort (readability only, content unchanged) — reuses the same
+// cache, so it's instant on a question you've already opened before.
+function triggerCheatReformat(q){
+  const musterEl = document.querySelector('#cheat-result .musterantwort');
+  if(musterEl) scheduleReformat(q.answer, musterEl);
+}
+function cheatResultBody(q){
   if(q.type === 'mc'){
-    const correctOpt = q.options.find(o=>o.letter===q.correct);
-    body = `<div class="rowlbl">Richtige Antwort</div>
-      <div class="rowval">${q.correct}) ${escapeHtml(correctOpt.text)}</div>`;
-  } else {
-    const fb = session.aiFeedback.get(q.id);
-    let fbHtml = '';
-    if(fb && fb.feedback){
-      fbHtml = `<div class="ai-feedback"><strong>KI-Einschätzung:</strong> ${renderMarkdownSafe(fb.feedback)}</div>`;
-    } else if(fb && fb.error){
-      fbHtml = `<div class="ai-feedback error"><strong>KI-Bewertung fehlgeschlagen:</strong> ${escapeHtml(fb.error)}</div>`;
-    }
-    let aiBtnHtml = '';
-    if(getAiKey() && !(fb && fb.feedback)){
-      aiBtnHtml = `<button class="ai-grade-btn" id="cheat-ai-btn" style="margin-top:10px">${fb && fb.error ? '🔁 KI erneut versuchen' : '✨ Mit KI bewerten'}</button>`;
-    }
-    body = `<div class="rowlbl">Musterantwort</div>
-      <div class="rowval">${renderMarkdownSafe(q.answer)}</div>
-      ${q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${renderMarkdownSafe(q.info)}</div>` : ''}
-      ${fbHtml}${aiBtnHtml}`;
+    const r = gradeMC(q);
+    const statusText = r === true ? '✓ Richtig' : r === false ? '✗ Falsch' : '– Nicht beantwortet';
+    const statusClass = r === true ? 'ok' : 'bad';
+    return `<div class="rowval cheat-status ${statusClass}">${statusText}</div>` +
+      (q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${renderMarkdownSafe(q.info)}</div>` : '');
   }
+  const fb = session.aiFeedback.get(q.id);
+  let fbHtml = '';
+  if(fb && fb.feedback){
+    fbHtml = `<div class="ai-feedback"><strong>KI-Einschätzung:</strong> ${renderMarkdownSafe(fb.feedback)}</div>`;
+  } else if(fb && fb.error){
+    fbHtml = `<div class="ai-feedback error"><strong>KI-Bewertung fehlgeschlagen:</strong> ${escapeHtml(fb.error)}</div>`;
+  }
+  let aiBtnHtml = '';
+  if(getAiKey() && !(fb && fb.feedback)){
+    aiBtnHtml = `<button class="ai-grade-btn" id="cheat-ai-btn" style="margin-top:10px">${fb && fb.error ? '🔁 KI erneut versuchen' : '✨ Mit KI bewerten'}</button>`;
+  }
+  return `<div class="rowlbl">Musterantwort</div>
+    <div class="rowval musterantwort">${renderMarkdownSafe(q.answer)}</div>
+    ${q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${renderMarkdownSafe(q.info)}</div>` : ''}
+    ${fbHtml}${aiBtnHtml}`;
+}
+// Before reveal, the panel only ever says "Cheat-Modus aktiviert" — never
+// the actual result — so opening/answering a question can't leak it. The
+// reveal happens in two aria-live steps (the word "Ergebnis" first, then —
+// after a 2s pause — the actual content replaces it) so a screen-reader user
+// gets a short verbal heads-up before the substantive text starts, instead
+// of being cut into it mid-navigation.
+function renderCheatPanel(q){
+  const revealed = session.cheatRevealed.has(q.id);
+  const body = revealed ? cheatResultBody(q) : 'Cheat-Modus aktiviert';
   return `<div class="cheat-panel" id="cheat-panel">
     <div class="cheat-label">🔓 Cheat-Modus</div>
-    ${body}
+    <div id="cheat-result" aria-live="polite">${body}</div>
   </div>`;
 }
-function wireCheatPanel(q){
+// Sits in the bottom-nav row (between "Vorherige"/"Nächste") rather than
+// inside the panel itself, so revealing the answer is a deliberate step
+// taken after navigating to/answering the question, not something visible
+// the instant the question opens.
+function renderCheatRevealBtn(q){
+  if(session.cheatRevealed.has(q.id)) return '';
+  return `<button class="btn btn-cheat" id="cheat-reveal-btn">Ergebnis anzeigen</button>`;
+}
+function wireCheatAiBtn(q){
   const cheatAiBtn = document.getElementById('cheat-ai-btn');
   if(cheatAiBtn){
     cheatAiBtn.addEventListener('click', async ()=>{
@@ -1478,6 +1557,33 @@ function wireCheatPanel(q){
       const panel = document.getElementById('cheat-panel');
       if(panel){ panel.outerHTML = renderCheatPanel(q); wireCheatPanel(q); }
     });
+  }
+}
+function wireCheatPanel(q){
+  const revealBtn = document.getElementById('cheat-reveal-btn');
+  if(revealBtn){
+    revealBtn.addEventListener('click', ()=>{
+      const mySession = session;
+      const resultEl = document.getElementById('cheat-result');
+      const nav = revealBtn.closest('.bottom-nav');
+      session.cheatRevealed.add(q.id);
+      revealBtn.remove();
+      if(nav) nav.classList.remove('has-cheat');
+      if(q.type === 'mc') applyCheatMcColoring(q);
+      resultEl.textContent = 'Ergebnis';
+      setTimeout(()=>{
+        if(session !== mySession) return; // a new exam was started meanwhile
+        if(document.getElementById('cheat-result') !== resultEl) return; // question changed meanwhile
+        resultEl.innerHTML = cheatResultBody(q);
+        wireCheatAiBtn(q);
+        triggerCheatReformat(q);
+      }, 2000);
+    });
+  }
+  wireCheatAiBtn(q);
+  if(session.cheatRevealed.has(q.id)){
+    if(q.type === 'mc') applyCheatMcColoring(q);
+    else triggerCheatReformat(q);
   }
 }
 
@@ -1530,12 +1636,15 @@ function renderQuestion(){
     </div>`;
   }
 
-  if(document.getElementById('cfg-cheat-mode')?.checked){
+  const cheatModeOn = document.getElementById('cfg-cheat-mode')?.checked;
+  if(cheatModeOn){
     html += renderCheatPanel(q);
   }
+  const cheatBtnHtml = cheatModeOn ? renderCheatRevealBtn(q) : '';
 
-  html += `<div class="bottom-nav">
+  html += `<div class="bottom-nav${cheatBtnHtml ? ' has-cheat' : ''}">
     <button class="btn btn-secondary" id="bottom-prev">&#8592; Vorherige Frage</button>
+    ${cheatBtnHtml}
     <button class="btn btn-primary" id="bottom-next">${currentIndex===total-1 ? 'Zum Abschluss' : 'Nächste Frage →'}</button>
   </div>`;
 
@@ -1768,8 +1877,8 @@ function renderResultsHtml(){
       bulkAiBtnHtml = `<button class="btn btn-blue" id="ai-setup-toggle-btn">✨ KI-Bewertung einrichten</button>`;
       aiSetupHtml = `<div class="hidden" id="results-ai-setup" style="margin-bottom:24px">
         <div class="field">
-          <label>Google Gemini API-Key (kostenlos)</label>
-          <input type="password" id="results-ai-key-input" placeholder="Einfügen, um KI-Bewertung zu aktivieren">
+          <label>Kostenlose KI-Auswertungen aktivieren</label>
+          <input type="password" id="results-ai-key-input" placeholder="Google Gemini API-Key hier einfügen">
         </div>
         <div class="toolbar-row fill-row">
           <button class="btn btn-primary" id="results-ai-key-save">Speichern &amp; testen</button>
