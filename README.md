@@ -13,6 +13,10 @@ oder per Link mitgegeben (siehe [Fragenquelle](#fragenquelle) unten).
 [`404.html`](404.html) ist eine reine Kopie von `index.html` und existiert
 ausschließlich, damit GitHub Pages auch Deep-Links mit einer eingebetteten
 Sheet-URL im Pfad ausliefert (siehe unten) — es ist keine eigenständige Seite.
+Für die Installierbarkeit als PWA (siehe [unten](#installierbar-pwa)) kommen
+vier kleine Begleitdateien dazu (`manifest.webmanifest`, `sw.js`,
+`icon-192.png`, `icon-512.png`) — die eigentliche Anwendungslogik bleibt
+vollständig in `index.html`.
 
 ## Lokal öffnen
 
@@ -22,16 +26,35 @@ Einfach `index.html` doppelklicken, oder:
 python -m http.server 8000
 ```
 
-und dann `http://localhost:8000` aufrufen. Da die Fragen live per `fetch()`
-geladen werden, ist eine Internetverbindung nötig; die App funktioniert nicht
-mehr offline.
+und dann `http://localhost:8000` aufrufen. Die Fragen werden live per
+`fetch()` aus dem Google Sheet geladen, dafür ist beim ersten Laden eine
+Internetverbindung nötig. Der Service Worker cached danach nur die
+App-Hülle (siehe [Installierbar (PWA)](#installierbar-pwa)) — ein bereits
+geladener Fragenkatalog bleibt offline nutzbar, ein neuer oder aktualisierter
+Katalog braucht weiterhin eine Verbindung.
 
-## Hosten (jede Option reicht — eine Datei genügt)
+## Hosten (jede Option reicht)
 
-- **GitHub Pages**: `index.html` in ein Repo pushen, Pages auf den Branch zeigen lassen.
+- **GitHub Pages**: Repo pushen, Pages auf den Branch zeigen lassen.
 - **Netlify Drop**: [app.netlify.com/drop](https://app.netlify.com/drop) — den Projektordner reinziehen, fertig.
 - **Cloudflare Pages / Vercel**: Repo verbinden, kein Build-Command nötig (Output-Verzeichnis = `/`).
-- **Beliebiger Webspace**: `index.html` per FTP hochladen.
+- **Beliebiger Webspace**: alle Dateien im Projektordner per FTP hochladen.
+
+## Installierbar (PWA)
+
+Die App lässt sich über den Browser als eigenständige App installieren
+("Zum Startbildschirm hinzufügen" / Install-Icon in der Adressleiste) —
+`manifest.webmanifest` liefert Name, Icons und Theme-Farbe, `sw.js` ist ein
+minimaler Service Worker, der ausschließlich die App-Hülle selbst
+(`index.html`, Manifest, Icons) cached. Die Sheet-Abfrage und alle
+Gemini-Aufrufe laufen weiterhin immer live — der Service Worker greift nur
+bei GET-Requests auf die eigene Domain ein, nie bei Cross-Origin-Requests.
+
+Da eine installierte App immer auf der festen `start_url` (`/`, ohne
+`?sheet=`) startet, merkt sich die App zusätzlich die zuletzt erfolgreich
+geladene Sheet-URL in `localStorage` (`simc3rt_last_sheet`) und lädt sie
+automatisch nach, wenn kein `?sheet=`-Parameter in der Adresse steht — das
+gilt genauso für einen normalen Browser-Aufruf der nackten Domain.
 
 ## Fragenquelle
 
