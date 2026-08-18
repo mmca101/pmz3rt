@@ -1,3 +1,5 @@
+<img src="sim-cert-basic-logo-cropped.png" width="200" height="200">
+
 # SiM-C3RT Prüfungssimulator
 
 Eine inoffizielle, schlanke Übungsplattform für das **GPM Basiszertifikat im
