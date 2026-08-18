@@ -8,7 +8,7 @@
      this stops it from sending anything (e.g. a stored Gemini key) anywhere
      except this same origin and Google's Generative Language API. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://generativelanguage.googleapis.com https://docs.google.com https://*.googleusercontent.com; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
-<title>SiM-C3RT v0.4</title>
+<title>SiM-C3RT v0.5</title>
 <style>
 :root{
   --navy:#152238; --navy2:#1c2f4d; --navy3:#24406b;
@@ -62,6 +62,7 @@ button{font-family:inherit;cursor:pointer}
 .config-section-count{font-size:11.5px;color:var(--muted);font-weight:600}
 .config-section-count.non-default{color:var(--amber-d);background:#fff0d9;padding:2px 8px;border-radius:10px}
 .config-section-body{padding:16px}
+.config-divider{border:none;border-top:1px solid var(--grey);margin:0 0 14px}
 .card h2{font-size:15px;margin:0 0 12px;color:var(--navy2)}
 .field-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px}
 .field{flex:1;min-width:180px}
@@ -335,6 +336,7 @@ input[type=range]{accent-color:var(--blue)}
             <input type="checkbox" id="cfg-cheat-mode">
             <span>Cheat-Modus aktivieren (nur zum Üben gedacht)<br><span class="badge-note">Zeigt Musterantwort/richtige Antwort direkt auf jeder Fragenseite, statt erst im Ergebnis.</span></span>
           </label>
+          <hr class="config-divider">
           <div class="field">
             <label>Google Gemini API-Key (kostenlos)</label>
             <input type="password" id="cfg-ai-key" placeholder="Einfügen, um KI-Bewertung zu aktivieren">
@@ -455,7 +457,7 @@ input[type=range]{accent-color:var(--blue)}
       </svg>
       <span>mmca101/simc3rt</span>
     </a>
-    <span class="version-badge">v0.4</span>
+    <span class="version-badge">v0.5</span>
   </div>
 </div>
 
@@ -467,7 +469,7 @@ input[type=range]{accent-color:var(--blue)}
         <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
     </button>
-    <div class="brand"><span class="logo-dot"></span> SiM-C3RT <span class="version-badge">v0.4</span></div>
+    <div class="brand"><span class="logo-dot"></span> SiM-C3RT <span class="version-badge">v0.5</span></div>
     <div class="timer" id="timer-display">90:00</div>
     <button class="end-btn" id="end-exam-btn">PRÜFUNG BEENDEN</button>
   </div>
@@ -572,29 +574,36 @@ const manualGradingNote = document.getElementById('manual-grading-note');
 // reality: shown whenever there's no key, the key is invalid, or a later
 // grading call revealed the key stopped working — never just because a
 // string happens to sit in localStorage.
-function setAiToggleBadge(text){
+let aiStatusShort = 'KI –';
+function updateToggleBadge(){
   const badge = document.getElementById('ai-toggle-badge');
-  if(badge) badge.textContent = text;
+  if(!badge) return;
+  const cheatOn = document.getElementById('cfg-cheat-mode')?.checked;
+  badge.textContent = aiStatusShort + ' / Cheats ' + (cheatOn ? '✓' : '–');
+}
+function setAiToggleBadge(kiShort){
+  aiStatusShort = kiShort;
+  updateToggleBadge();
 }
 async function refreshAiKeyStatus(){
   const key = getAiKey();
   if(!key){
     setAiKeyStatus('', null);
     manualGradingNote.classList.remove('hidden');
-    setAiToggleBadge('nicht eingerichtet');
+    setAiToggleBadge('KI –');
     return;
   }
   setAiKeyStatus('Key wird geprüft…', null);
-  setAiToggleBadge('wird geprüft…');
+  setAiToggleBadge('KI …');
   const result = await testGeminiKey(key);
   if(result.ok){
     setAiKeyStatus('✓ Key gespeichert und gültig – KI-Bewertung ist im Review verfügbar.', 'ok');
     manualGradingNote.classList.add('hidden');
-    setAiToggleBadge('✓ aktiv');
+    setAiToggleBadge('KI ✓');
   } else {
     setAiKeyStatus('✗ Gespeicherter Key ist ungültig: ' + result.message, 'bad');
     manualGradingNote.classList.remove('hidden');
-    setAiToggleBadge('✗ ungültig');
+    setAiToggleBadge('KI ✗');
   }
 }
 aiKeyInput.value = getAiKey();
@@ -625,13 +634,13 @@ aiKeySaveBtn.addEventListener('click', async ()=>{
     localStorage.removeItem(AI_KEY_STORAGE);
     setAiKeyStatus('Kein Key eingegeben.', null);
     manualGradingNote.classList.remove('hidden');
-    setAiToggleBadge('nicht eingerichtet');
+    setAiToggleBadge('KI –');
     return;
   }
   aiKeySaveBtn.disabled = true;
   aiKeySaveBtn.textContent = 'Prüfe…';
   setAiKeyStatus('Key wird geprüft…', null);
-  setAiToggleBadge('wird geprüft…');
+  setAiToggleBadge('KI …');
   const result = await testGeminiKey(key);
   aiKeySaveBtn.disabled = false;
   aiKeySaveBtn.textContent = 'Speichern & testen';
@@ -639,12 +648,12 @@ aiKeySaveBtn.addEventListener('click', async ()=>{
     localStorage.setItem(AI_KEY_STORAGE, key);
     setAiKeyStatus('✓ Key gültig und gespeichert – KI-Bewertung ist im Review verfügbar.', 'ok');
     manualGradingNote.classList.add('hidden');
-    setAiToggleBadge('✓ aktiv');
+    setAiToggleBadge('KI ✓');
   } else {
     localStorage.removeItem(AI_KEY_STORAGE); // don't leave a known-bad key active
     setAiKeyStatus('✗ Key ungültig: ' + result.message, 'bad');
     manualGradingNote.classList.remove('hidden');
-    setAiToggleBadge('✗ ungültig');
+    setAiToggleBadge('KI ✗');
   }
 });
 aiKeyInput.addEventListener('keydown', (e)=>{
@@ -843,7 +852,7 @@ function updateShareableUrl(){
   const params = new URLSearchParams();
 
   const sheetUrl = sheetUrlInput.value.trim();
-  if(sheetUrl) params.set('sheet', sheetUrl);
+  if(sheetUrl) params.set('sheet', extractSheetId(sheetUrl) || sheetUrl);
 
   const count = document.getElementById('cfg-count').value;
   if(count && count !== '61') params.set('n', count);
@@ -1059,7 +1068,7 @@ function updateFocusLabel(){
 }
 focusSlider.addEventListener('input', ()=>{ updateFocusLabel(); persistConfig(); });
 document.getElementById('cfg-mc-first').addEventListener('change', persistConfig);
-document.getElementById('cfg-cheat-mode').addEventListener('change', persistConfig);
+document.getElementById('cfg-cheat-mode').addEventListener('change', ()=>{ persistConfig(); updateToggleBadge(); });
 updateFocusLabel();
 
 // Restore previously-saved count/time/name/focus-type now that every field
@@ -1067,6 +1076,7 @@ updateFocusLabel();
 // in renderKeGrid() once the grid itself exists (after questions load).
 applySavedScalarFields();
 updateFocusLabel();
+updateToggleBadge();
 
 document.getElementById('cfg-reset-btn').addEventListener('click', ()=>{
   document.getElementById('cfg-count').value = '61';
@@ -1078,6 +1088,7 @@ document.getElementById('cfg-reset-btn').addEventListener('click', ()=>{
   randomizeWeights(); // true out-of-the-box default is a fresh random spread, not all-1×
   updateFocusLabel();
   updateSummary();
+  updateToggleBadge();
   clearSavedConfig();
   updateShareableUrl(); // drops any ?n=/t=/f=/ke=/kw=/sheet= back to a clean URL
   // deliberately does not touch the saved Gemini API key
@@ -2356,9 +2367,13 @@ async function loadQuestions(){
 }
 sheetReloadBtn.addEventListener('click', loadQuestions);
 
-// Deep-link a question sheet via the page URL, two ways:
+// Deep-link a question sheet via the page URL, a few ways:
+//   https://sim-c3rt.de/?sheet=ID                                     (canonical — what updateShareableUrl() writes)
 //   https://sim-c3rt.de/?sheet=https://docs.google.com/spreadsheets/d/ID/edit
 //   https://sim-c3rt.de/https://docs.google.com/spreadsheets/d/ID/edit?gid=0#gid=0
+// extractSheetId() accepts either a bare ID or a full URL, so all three
+// resolve the same way; updateShareableUrl() always normalizes down to the
+// bare-ID form once the sheet loads, since the rest of the URL is constant.
 // The bare-path form only reaches this script at all because 404.html is a
 // copy of this file (GitHub Pages serves it, unchanged URL, for any path
 // that isn't a real file — the standard static-site SPA-routing trick).

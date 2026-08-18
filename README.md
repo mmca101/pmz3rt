@@ -53,23 +53,28 @@ offene Frage.
 
 ### Fragenquelle per Link mitgeben
 
-Die Sheet-URL lässt sich direkt in den Seitenlink einbetten, damit die App
-sofort mit dieser Quelle startet, ohne manuelles Eintragen:
+Die Sheet-URL (oder nur deren ID) lässt sich direkt in den Seitenlink
+einbetten, damit die App sofort mit dieser Quelle startet, ohne manuelles
+Eintragen:
 
 ```
+https://<domain>/?sheet=<Sheet-ID>
 https://<domain>/?sheet=<Google-Sheet-URL>
 https://<domain>/<Google-Sheet-URL>
 ```
 
-Beide Formen sind gleichwertig; welche URL eingebettet ist, entscheidet
-allein, wer den Link verschickt — es gibt keine im Repo gespeicherte Beispiel-
-oder Standard-Sheet-URL. Die zweite Form (URL direkt nach der Domain, ohne
-`?sheet=`) funktioniert nur dank [`404.html`](404.html): GitHub Pages ist ein
-reiner Static-File-Host ohne serverseitiges Routing, liefert aber für jeden
-nicht existierenden Pfad automatisch `404.html` aus (Standard-Trick für
-Client-seitiges Routing auf statischen Hosts) — und die ist eine 1:1-Kopie
-von `index.html`, sodass die App auch dann lädt und die eingebettete URL aus
-`location.pathname` auslesen kann.
+Alle drei Formen sind gleichwertig — der Rest der Google-Sheet-URL ist
+ohnehin immer derselbe, daher genügt die reine Sheet-ID nach `?sheet=`; die
+Konfigurator-Karte "Fragenquelle" normalisiert eine eingetragene volle URL
+beim Laden automatisch auf die kurze ID-Form in der Adresszeile. Es gibt
+keine im Repo gespeicherte Beispiel- oder Standard-Sheet-URL. Die dritte Form
+(URL direkt nach der Domain, ohne `?sheet=`) funktioniert nur dank
+[`404.html`](404.html): GitHub Pages ist ein reiner Static-File-Host ohne
+serverseitiges Routing, liefert aber für jeden nicht existierenden Pfad
+automatisch `404.html` aus (Standard-Trick für Client-seitiges Routing auf
+statischen Hosts) — und die ist eine 1:1-Kopie von `index.html`, sodass die
+App auch dann lädt und die eingebettete URL aus `location.pathname` auslesen
+kann.
 
 ## Funktionsumfang
 
