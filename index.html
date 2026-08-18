@@ -171,6 +171,9 @@ input[type=range]{accent-color:var(--blue)}
 .cheat-panel{margin-top:20px;padding:14px 16px;background:#fff6e9;border:1px dashed var(--amber);border-radius:8px}
 .cheat-panel .cheat-label{font-size:11.5px;font-weight:700;color:var(--amber-d);text-transform:uppercase;letter-spacing:.3px}
 .cheat-panel #cheat-result{margin-top:6px;font-size:13.5px;color:var(--text)}
+.cheat-panel.slim{padding:10px 16px;display:flex;align-items:center;gap:5px}
+.cheat-panel.slim .cheat-label{white-space:nowrap}
+.cheat-panel.slim #cheat-result{margin-top:0;font-size:11.5px;font-weight:700;color:var(--amber-d);text-transform:uppercase;letter-spacing:.3px}
 .cheat-panel .rowlbl{font-size:11.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-top:8px}
 .cheat-panel .rowval{font-size:13.5px;line-height:1.5;white-space:pre-wrap;margin-top:2px}
 .cheat-panel .cheat-status{font-weight:700;font-size:14.5px}
@@ -264,6 +267,8 @@ input[type=range]{accent-color:var(--blue)}
 .self-grade-btns button.ai-grade-btn:disabled{opacity:.6;cursor:default}
 .ai-feedback{margin-top:8px;padding:8px 10px;background:#eef1f5;border-left:3px solid var(--blue);border-radius:4px;font-size:13px;line-height:1.5}
 .ai-feedback.error{border-left-color:var(--danger);color:var(--danger)}
+.ai-feedback.correct{border-left-color:var(--green);background:#eaf7ee}
+.ai-feedback.wrong{border-left-color:var(--danger);background:#fbeaea}
 .filter-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
 .filter-row button{border:1px solid var(--grey);background:#fff;padding:6px 14px;border-radius:16px;font-size:12.5px}
 .filter-row button.active{background:var(--navy2);color:#fff;border-color:var(--navy2)}
@@ -1509,7 +1514,11 @@ function cheatResultBody(q){
   const fb = session.aiFeedback.get(q.id);
   let fbHtml = '';
   if(fb && fb.feedback){
-    fbHtml = `<div class="ai-feedback"><strong>KI-Einschätzung:</strong> ${renderMarkdownSafe(fb.feedback)}</div>`;
+    const sg = session.selfGrade.get(q.id); // set alongside aiFeedback by runAiGradeQuestion()
+    const fbClass = sg === true ? 'correct' : sg === false ? 'wrong' : '';
+    const statusHtml = sg === true ? '<div class="rowval cheat-status ok">✓ Richtig</div>'
+      : sg === false ? '<div class="rowval cheat-status bad">✗ Falsch</div>' : '';
+    fbHtml = `${statusHtml}<div class="ai-feedback ${fbClass}"><strong>KI-Einschätzung:</strong> ${renderMarkdownSafe(fb.feedback)}</div>`;
   } else if(fb && fb.error){
     fbHtml = `<div class="ai-feedback error"><strong>KI-Bewertung fehlgeschlagen:</strong> ${escapeHtml(fb.error)}</div>`;
   }
@@ -1522,16 +1531,16 @@ function cheatResultBody(q){
     ${q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${renderMarkdownSafe(q.info)}</div>` : ''}
     ${fbHtml}${aiBtnHtml}`;
 }
-// Before reveal, the panel only ever says "Cheat-Modus aktiviert" — never
-// the actual result — so opening/answering a question can't leak it. The
-// reveal happens in two aria-live steps (the word "Ergebnis" first, then —
-// after a 2s pause — the actual content replaces it) so a screen-reader user
-// gets a short verbal heads-up before the substantive text starts, instead
-// of being cut into it mid-navigation.
+// Before reveal, the panel collapses to a single-line "🔓 Cheat-Modus
+// aktiviert" banner — never the actual result — so opening/answering a
+// question can't leak it. The reveal happens in two aria-live steps (the
+// word "Ergebnis" first, then — after a 2s pause — the actual content
+// replaces it) so a screen-reader user gets a short verbal heads-up before
+// the substantive text starts, instead of being cut into it mid-navigation.
 function renderCheatPanel(q){
   const revealed = session.cheatRevealed.has(q.id);
-  const body = revealed ? cheatResultBody(q) : 'Cheat-Modus aktiviert';
-  return `<div class="cheat-panel" id="cheat-panel">
+  const body = revealed ? cheatResultBody(q) : 'aktiviert';
+  return `<div class="cheat-panel${revealed ? '' : ' slim'}" id="cheat-panel">
     <div class="cheat-label">🔓 Cheat-Modus</div>
     <div id="cheat-result" aria-live="polite">${body}</div>
   </div>`;
@@ -1565,10 +1574,12 @@ function wireCheatPanel(q){
     revealBtn.addEventListener('click', ()=>{
       const mySession = session;
       const resultEl = document.getElementById('cheat-result');
+      const panel = document.getElementById('cheat-panel');
       const nav = revealBtn.closest('.bottom-nav');
       session.cheatRevealed.add(q.id);
       revealBtn.remove();
       if(nav) nav.classList.remove('has-cheat');
+      if(panel) panel.classList.remove('slim');
       if(q.type === 'mc') applyCheatMcColoring(q);
       resultEl.textContent = 'Ergebnis';
       setTimeout(()=>{
