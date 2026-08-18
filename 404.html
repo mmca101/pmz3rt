@@ -42,12 +42,6 @@ html{scroll-behavior:smooth}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--text);height:100%}
 button{font-family:inherit;cursor:pointer}
 .hidden{display:none !important}
-/* Installed PWA: no browser chrome to justify the same generous bottom
-   whitespace as a normal web page — the config screen shouldn't scroll
-   past its own content just because of unconditional padding. */
-@media (display-mode: standalone){
-  #screen-start{padding-bottom:0}
-}
 
 /* ---------- Start screen ---------- */
 #screen-start{max-width:640px;margin:0 auto;padding:40px 20px;min-height:100vh;display:flex;flex-direction:column;justify-content:center}
@@ -301,7 +295,7 @@ input[type=range]{accent-color:var(--blue)}
 /* ---------- Mobile: collapse the question overview into a burger-toggled
    slide-in drawer, and tighten up spacing generally ---------- */
 @media (max-width: 760px){
-  #screen-start{padding-bottom:0}
+  #screen-start{padding-bottom:16px}
   .main-actions-row{flex-direction:column}
   .secondary-actions-row{display:flex;gap:10px}
   .secondary-actions-row .btn{padding:11.5px 8px;font-size:12.5px;white-space:nowrap}
