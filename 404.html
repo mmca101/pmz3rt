@@ -291,6 +291,7 @@ input[type=range]{accent-color:var(--blue)}
 @media (max-width: 760px){
   .main-actions-row{flex-direction:column}
   .secondary-actions-row{display:flex;gap:10px}
+  .secondary-actions-row .btn{padding:11.5px 8px;font-size:12.5px;white-space:nowrap}
   .field{min-width:120px}
   .hamburger-btn{display:flex}
   .topbar{padding:8px 10px;gap:6px}
@@ -438,7 +439,7 @@ input[type=range]{accent-color:var(--blue)}
       </details>
 
       <details class="config-section">
-        <summary><span>Fragenkatalog <span class="badge-note">(Stand: 13.08.2026)</span></span><span class="config-section-count" id="sheet-toggle-badge"></span></summary>
+        <summary><span>Fragenkatalog <span class="badge-note hidden" id="sheet-stand-note">(Stand: 13.08.2026)</span></span><span class="config-section-count" id="sheet-toggle-badge"></span></summary>
         <div class="config-section-body">
           <div class="field">
             <label>Google-Sheet-URL <span class="badge-note">(es wird nur das erste Tabellenblatt verwendet)</span></label>
@@ -2620,17 +2621,27 @@ function setSheetToggleBadge(text){
   if(badge) badge.textContent = text;
 }
 async function loadQuestions(){
-  const id = extractSheetId(sheetUrlInput.value);
+  const standNote = document.getElementById('sheet-stand-note');
+  const rawValue = sheetUrlInput.value.trim();
+  const id = extractSheetId(rawValue);
   if(!id){
-    sheetStatus.textContent = '✗ Ungültige Google-Sheet-URL.';
-    sheetStatus.className = 'small-note status-bad';
-    setSheetToggleBadge('✗ ungültige URL');
+    standNote.classList.add('hidden');
+    if(!rawValue){
+      sheetStatus.textContent = 'Keine Fragenquelle eingetragen.';
+      sheetStatus.className = 'small-note';
+      setSheetToggleBadge('keine Quelle');
+    } else {
+      sheetStatus.textContent = '✗ Ungültige Google-Sheet-URL.';
+      sheetStatus.className = 'small-note status-bad';
+      setSheetToggleBadge('✗ ungültige URL');
+    }
     updateSummary();
     return;
   }
   sheetStatus.textContent = 'Lade Fragen…';
   sheetStatus.className = 'small-note';
   setSheetToggleBadge('wird geladen…');
+  standNote.classList.add('hidden');
   sheetReloadBtn.disabled = true;
   startBtn.classList.add('btn-not-ready');
   try{
@@ -2650,9 +2661,11 @@ async function loadQuestions(){
     sheetStatus.textContent = `✓ ${ALL_Q.length} Fragen geladen (${mcCount} Checkboxfragen, ${ALL_Q.length-mcCount} Freitext).`;
     sheetStatus.className = 'small-note status-ok';
     setSheetToggleBadge(`✓ ${ALL_Q.length} geladen`);
+    standNote.classList.remove('hidden');
     startBtn.classList.remove('btn-not-ready');
     updateShareableUrl(); // canonicalizes a bare-path sheet injection into ?sheet=... too
   } catch(err){
+    standNote.classList.add('hidden');
     sheetStatus.textContent = '✗ Fehler beim Laden: ' + ((err && err.message) || err) +
       ' — Sheet muss auf "Jeder mit dem Link kann ansehen" freigegeben sein.';
     sheetStatus.className = 'small-note status-bad';
