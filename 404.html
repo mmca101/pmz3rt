@@ -692,15 +692,24 @@ function setCachedReformat(rawText, formatted){
   try{ localStorage.setItem(REFORMAT_CACHE_PREFIX + hashText(rawText), formatted); }
   catch(e){ /* localStorage full/unavailable — just skip caching, not fatal */ }
 }
-async function aiReformatAnswer(rawText){
+// 503 (model overloaded) and 429 (rate limited) are both documented by Google
+// as transient — the correct response is a short backoff and retry, not an
+// immediate failure. Shared by every Gemini call so grading and reformatting
+// both get this resilience instead of surfacing the error on the first blip.
+const GEMINI_RETRYABLE_STATUS = new Set([503, 429]);
+// Rolling aliases (not dated model names) so neither needs manual bumping as
+// Google retires specific versions — same reasoning as the primary model.
+// Flash-Lite is a smaller, separate model with its own backend capacity, so
+// it's a reasonable free fallback when Flash itself is the thing that's
+// overloaded — still within the same API key's free tier, no extra setup.
+const GEMINI_PRIMARY_MODEL = 'gemini-flash-latest';
+const GEMINI_FALLBACK_MODEL = 'gemini-flash-lite-latest';
+
+async function callGeminiOnce(prompt, model){
   const apiKey = getAiKey();
   if(!apiKey) throw new Error('Kein API-Key hinterlegt.');
-  const prompt = 'Formatiere den folgenden Text als gut lesbares Markdown (fett für Kernbegriffe, ' +
-    'Aufzählungen wo sinnvoll, kurze Absätze). Verändere NICHT den Inhalt, füge NICHTS hinzu und lasse ' +
-    'NICHTS weg — nur Formatierung und Struktur dürfen sich ändern. Antworte AUSSCHLIESSLICH mit dem ' +
-    'formatierten Text, ohne Einleitung, ohne Codeblock, ohne umschließende Anführungszeichen.\n\nText:\n' + rawText;
   const res = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + encodeURIComponent(apiKey),
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=` + encodeURIComponent(apiKey),
     {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -709,12 +718,50 @@ async function aiReformatAnswer(rawText){
   );
   if(!res.ok){
     const errBody = await res.text().catch(()=> '');
-    throw new Error('API-Fehler ' + res.status + (errBody ? (': ' + errBody.slice(0,200)) : ''));
+    const friendly = res.status === 503
+      ? 'Google-Server aktuell überlastet (503) — bitte in Kürze erneut versuchen.'
+      : res.status === 429
+      ? 'Zu viele Anfragen kurz hintereinander (429) — bitte kurz warten und erneut versuchen.'
+      : 'API-Fehler ' + res.status + (errBody ? (': ' + errBody.slice(0,200)) : '');
+    const err = new Error(friendly);
+    err.status = res.status;
+    throw err;
   }
   const data = await res.json();
-  const text = (data.candidates && data.candidates[0] && data.candidates[0].content &&
+  return (data.candidates && data.candidates[0] && data.candidates[0].content &&
     data.candidates[0].content.parts && data.candidates[0].content.parts[0] &&
     data.candidates[0].content.parts[0].text) || '';
+}
+
+async function callGeminiApi(prompt){
+  let lastErr;
+  for(let attempt = 1; attempt <= 3; attempt++){
+    try{
+      return await callGeminiOnce(prompt, GEMINI_PRIMARY_MODEL);
+    } catch(err){
+      lastErr = err;
+      if(!GEMINI_RETRYABLE_STATUS.has(err.status) || attempt === 3) break;
+      await new Promise(r => setTimeout(r, attempt * 1200));
+    }
+  }
+  // Primary model is still failing with a transient error after 3 tries —
+  // one last attempt on the free Lite tier before giving up entirely.
+  if(GEMINI_RETRYABLE_STATUS.has(lastErr.status)){
+    try{
+      return await callGeminiOnce(prompt, GEMINI_FALLBACK_MODEL);
+    } catch(fallbackErr){
+      throw lastErr; // report the primary model's error — the more relevant one
+    }
+  }
+  throw lastErr;
+}
+
+async function aiReformatAnswer(rawText){
+  const prompt = 'Formatiere den folgenden Text als gut lesbares Markdown (fett für Kernbegriffe, ' +
+    'Aufzählungen wo sinnvoll, kurze Absätze). Verändere NICHT den Inhalt, füge NICHTS hinzu und lasse ' +
+    'NICHTS weg — nur Formatierung und Struktur dürfen sich ändern. Antworte AUSSCHLIESSLICH mit dem ' +
+    'formatierten Text, ohne Einleitung, ohne Codeblock, ohne umschließende Anführungszeichen.\n\nText:\n' + rawText;
+  const text = await callGeminiApi(prompt);
   return text.replace(/```(markdown)?/gi, '').trim();
 }
 function scheduleReformat(rawText, targetEl){
@@ -728,9 +775,11 @@ function scheduleReformat(rawText, targetEl){
   }).catch(()=>{ /* silently keep the plain-markdown fallback already shown */ });
 }
 
+// "gemini-flash-latest" is Google's rolling alias for their current Flash
+// model — it gets hot-swapped by Google over time (with advance notice for
+// breaking changes), so this doesn't need to be manually bumped every time
+// a specific dated model version (e.g. gemini-2.0-flash) gets retired.
 async function aiGradeOpenQuestion(q, candidateText){
-  const apiKey = getAiKey();
-  if(!apiKey) throw new Error('Kein API-Key hinterlegt.');
   const prompt = 'Du bist Prüfer/in für die GPM Basiszertifikat-Prüfung im Projektmanagement (ICB4).\n' +
     'Bewerte, ob die Antwort des Kandidaten inhaltlich der Musterantwort entspricht. Die Kernaussagen müssen ' +
     'stimmen, eine wortgleiche Formulierung ist nicht nötig. Sei bei der Bewertung fair, aber nicht nachlässig.\n\n' +
@@ -740,27 +789,7 @@ async function aiGradeOpenQuestion(q, candidateText){
     '\nAntwort des Kandidaten: ' + (candidateText || '(keine Antwort abgegeben)') +
     '\n\nAntworte AUSSCHLIESSLICH mit kompaktem JSON, ohne Markdown-Codeblock, in diesem Format:\n' +
     '{"correct": true oder false, "feedback": "ein bis zwei Sätze Begründung auf Deutsch"}';
-
-  // "gemini-flash-latest" is Google's rolling alias for their current Flash
-  // model — it gets hot-swapped by Google over time (with advance notice for
-  // breaking changes), so this doesn't need to be manually bumped every time
-  // a specific dated model version (e.g. gemini-2.0-flash) gets retired.
-  const res = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + encodeURIComponent(apiKey),
-    {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({contents: [{parts: [{text: prompt}]}]})
-    }
-  );
-  if(!res.ok){
-    const errBody = await res.text().catch(()=> '');
-    throw new Error('API-Fehler ' + res.status + (errBody ? (': ' + errBody.slice(0,200)) : ''));
-  }
-  const data = await res.json();
-  const text = (data.candidates && data.candidates[0] && data.candidates[0].content &&
-    data.candidates[0].content.parts && data.candidates[0].content.parts[0] &&
-    data.candidates[0].content.parts[0].text) || '';
+  const text = await callGeminiApi(prompt);
   const cleaned = text.replace(/```json/gi, '').replace(/```/g, '').trim();
   let parsed;
   try{ parsed = JSON.parse(cleaned); }
@@ -787,32 +816,94 @@ function persistConfig(){
       keWeights: Object.fromEntries(keWeights)
     }));
   } catch(e){ /* localStorage unavailable — persistence is a nice-to-have, not required */ }
+  updateShareableUrl();
 }
 function clearSavedConfig(){
   localStorage.removeItem(CONFIG_STORAGE_KEY);
 }
+
+// Mirrors the current configurator state into the page URL (query string
+// only) so the address bar is always a shareable link reproducing this
+// exact setup — but only for values that differ from the hardcoded
+// defaults, so a freshly-reset/default configuration keeps a clean URL.
+// Also doubles as the canonicalizer for the bare-path sheet-URL injection
+// form: since that form has no query string of its own yet, the first call
+// here (right after the sheet finishes loading) rewrites it to the
+// ?sheet=... form and drops the raw URL from the path.
+function updateShareableUrl(){
+  const params = new URLSearchParams();
+
+  const sheetUrl = sheetUrlInput.value.trim();
+  if(sheetUrl) params.set('sheet', sheetUrl);
+
+  const count = document.getElementById('cfg-count').value;
+  if(count && count !== '61') params.set('n', count);
+
+  const time = document.getElementById('cfg-time').value;
+  if(time && time !== '90') params.set('t', time);
+
+  const focus = focusSlider.value;
+  if(focus && parseInt(focus, 10) !== FOCUS_DEFAULT) params.set('f', focus);
+
+  if(!document.getElementById('cfg-mc-first').checked) params.set('mcf', '0');
+
+  if(KE_LIST.length > 0){
+    const selected = selectedKEKeys();
+    if(selected.length !== KE_LIST.length) params.set('ke', selected.join(','));
+  }
+
+  const nonDefaultWeights = [...keWeights.entries()].filter(([, v]) => v !== 1);
+  if(nonDefaultWeights.length > 0){
+    params.set('kw', nonDefaultWeights.map(([k, v]) => `${k}:${v}`).join(','));
+  }
+
+  const query = params.toString();
+  const rawPath = location.pathname.replace(/^\/+/, '');
+  const isBareSheetPath = /^https?:\/\//i.test(rawPath);
+  const basePath = isBareSheetPath ? '/' : location.pathname;
+  history.replaceState(null, '', basePath + (query ? `?${query}` : ''));
+}
 // Restores count/time/name/focus-type immediately (these fields exist from
 // the start); KE checkboxes are restored separately once the grid exists.
+// URL params (a shared/deep-link config) take priority over the locally
+// saved config whenever both are present, since an explicit shared link
+// should reproduce what was shared, not the visitor's own leftover setup.
 function applySavedScalarFields(){
-  const cfg = loadSavedConfig();
-  if(!cfg) return;
-  if(cfg.count) document.getElementById('cfg-count').value = cfg.count;
-  if(cfg.time) document.getElementById('cfg-time').value = cfg.time;
-  if(cfg.focusType) focusSlider.value = cfg.focusType;
-  if(typeof cfg.mcFirst === 'boolean') document.getElementById('cfg-mc-first').checked = cfg.mcFirst;
+  const params = new URLSearchParams(location.search);
+  const cfg = loadSavedConfig() || {};
+  const count = params.get('n') || cfg.count;
+  const time = params.get('t') || cfg.time;
+  const focusType = params.get('f') || cfg.focusType;
+  const mcfParam = params.get('mcf');
+  const mcFirst = mcfParam !== null ? (mcfParam === '1') : cfg.mcFirst;
+  if(count) document.getElementById('cfg-count').value = count;
+  if(time) document.getElementById('cfg-time').value = time;
+  if(focusType) focusSlider.value = focusType;
+  if(typeof mcFirst === 'boolean') document.getElementById('cfg-mc-first').checked = mcFirst;
 }
 function applySavedKeSelection(){
-  const cfg = loadSavedConfig();
-  if(!cfg) return;
-  if(Array.isArray(cfg.keKeys)){
-    const keySet = new Set(cfg.keKeys);
+  const params = new URLSearchParams(location.search);
+  const cfg = loadSavedConfig() || {};
+  const keParam = params.get('ke');
+  const keKeys = keParam !== null ? keParam.split(',').filter(Boolean) : cfg.keKeys;
+  if(Array.isArray(keKeys)){
+    const keySet = new Set(keKeys);
     grid.querySelectorAll('input[type=checkbox]').forEach(el=>{
       el.checked = keySet.has(el.dataset.key);
     });
   }
-  if(cfg.keWeights && typeof cfg.keWeights === 'object'){
+  const kwParam = params.get('kw');
+  let keWeightsSource = cfg.keWeights;
+  if(kwParam !== null){
+    keWeightsSource = {};
+    kwParam.split(',').forEach(pair => {
+      const [k, v] = pair.split(':');
+      if(k && v) keWeightsSource[k] = parseInt(v, 10);
+    });
+  }
+  if(keWeightsSource && typeof keWeightsSource === 'object'){
     grid.querySelectorAll('.ke-weight-input').forEach(input=>{
-      const saved = cfg.keWeights[input.dataset.key];
+      const saved = keWeightsSource[input.dataset.key];
       if(saved){
         input.value = saved;
         keWeights.set(input.dataset.key, saved);
@@ -965,12 +1056,14 @@ updateFocusLabel();
 document.getElementById('cfg-reset-btn').addEventListener('click', ()=>{
   document.getElementById('cfg-count').value = '61';
   document.getElementById('cfg-time').value = '90';
-  grid.querySelectorAll('input').forEach(el=>el.checked=true);
+  grid.querySelectorAll('input[type=checkbox]').forEach(el=>el.checked=true);
   document.getElementById('cfg-mc-first').checked = true;
   focusSlider.value = '19';
+  randomizeWeights(); // true out-of-the-box default is a fresh random spread, not all-1×
   updateFocusLabel();
   updateSummary();
   clearSavedConfig();
+  updateShareableUrl(); // drops any ?n=/t=/f=/ke=/kw=/sheet= back to a clean URL
   // deliberately does not touch the saved Gemini API key
 });
 
@@ -1576,21 +1669,50 @@ function renderResultsHtml(){
 
   const totalOpen = session.questions.filter(q=>q.type==='open').length;
   let bulkAiBtnHtml = '';
-  if(getAiKey() && totalOpen > 0){
-    if(session.aiGradingRunning){
-      bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn" disabled>⏳ KI-Bewertung läuft…</button>`;
-    } else if(ungradedOpen === 0){
-      bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn" disabled>✓ KI-Bewertung abgeschlossen</button>`;
+  let aiSetupHtml = '';
+  if(totalOpen > 0){
+    if(getAiKey()){
+      if(session.aiGradingRunning){
+        bulkAiBtnHtml = `<button class="btn btn-blue" id="ai-grade-all-btn" disabled>⏳ KI-Bewertung läuft…</button>`;
+      } else if(ungradedOpen === 0){
+        bulkAiBtnHtml = `<button class="btn btn-blue" id="ai-grade-all-btn" disabled>✓ KI-Bewertung abgeschlossen</button>`;
+      } else {
+        bulkAiBtnHtml = `<button class="btn btn-blue" id="ai-grade-all-btn">✨ Alle offenen Fragen mit KI bewerten (${ungradedOpen})</button>`;
+      }
     } else {
-      bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn">✨ Alle offenen Fragen mit KI bewerten (${ungradedOpen})</button>`;
+      // No key yet — offer setup right here instead of forcing a trip back to
+      // the start screen (and definitely not a full retry of the exam) just
+      // to see what the AI evaluation adds. Same field/layout/info copy as
+      // the start screen's KI-Auswertung card, so it reads as the same
+      // feature rather than a stripped-down duplicate.
+      bulkAiBtnHtml = `<button class="btn btn-blue" id="ai-setup-toggle-btn">✨ KI-Bewertung einrichten</button>`;
+      aiSetupHtml = `<div class="hidden" id="results-ai-setup" style="margin-bottom:24px">
+        <div class="field">
+          <label>Google Gemini API-Key (kostenlos)</label>
+          <input type="password" id="results-ai-key-input" placeholder="Einfügen, um KI-Bewertung zu aktivieren">
+        </div>
+        <div class="toolbar-row fill-row">
+          <button class="btn btn-primary" id="results-ai-key-save">Speichern &amp; testen</button>
+          <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" class="btn-link" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">API-Key erstellen ↗</a>
+        </div>
+        <div class="small-note" id="results-ai-key-status" style="margin-top:0"></div>
+        <div class="small-note">
+          Kostenlos auf <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener">aistudio.google.com/api-keys</a>
+          erstellbar (Google-Konto nötig, keine Zahlungsmethode). Der Key wird ausschließlich lokal in Ihrem
+          Browser gespeichert (localStorage) und bei Bewertung direkt von Ihrem Browser an Google gesendet — er
+          läuft über keinen Server dieser Anwendung. Ohne Key müssen die offenen Fragen zur Musterlösung selbst
+          abgeglichen und abgeschätzt werden!
+        </div>
+      </div>`;
     }
   }
   html += `<div class="toolbar-row fill-row" style="margin-bottom:24px">
     <button class="btn btn-orange" id="reconfigure-btn">Konfiguration überarbeiten</button>
     <button class="btn btn-primary" id="restart-btn">Neue Simulation starten</button>
-    <button class="btn btn-secondary" id="export-csv-btn">📥 Ergebnisse als CSV speichern</button>
     ${bulkAiBtnHtml}
-  </div>`;
+    <button class="btn btn-secondary" id="export-csv-btn">📥 Ergebnis speichern</button>
+  </div>
+  ${aiSetupHtml}`;
 
   html += '<div class="ke-results">';
   for(const r of keResults){
@@ -1649,6 +1771,10 @@ function wireResultsEvents(){
     document.getElementById('screen-results').innerHTML = '';
     document.getElementById('screen-start').classList.remove('hidden');
     session = null;
+    // The AI key may have been added/changed via the results-page setup
+    // form since the start screen last computed its own key status — the
+    // warning banner and KI-Auswertung badge would otherwise stay stale.
+    refreshAiKeyStatus();
   });
 
   const aiAllBtn = document.getElementById('ai-grade-all-btn');
@@ -1659,6 +1785,45 @@ function wireResultsEvents(){
   const exportBtn = document.getElementById('export-csv-btn');
   if(exportBtn){
     exportBtn.addEventListener('click', downloadAnswersCsv);
+  }
+
+  const setupToggleBtn = document.getElementById('ai-setup-toggle-btn');
+  if(setupToggleBtn){
+    setupToggleBtn.addEventListener('click', ()=>{
+      document.getElementById('results-ai-setup').classList.toggle('hidden');
+    });
+    const keyInput = document.getElementById('results-ai-key-input');
+    const statusEl = document.getElementById('results-ai-key-status');
+    const saveBtn = document.getElementById('results-ai-key-save');
+    keyInput.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){ e.preventDefault(); saveBtn.click(); }
+    });
+    saveBtn.addEventListener('click', async ()=>{
+      const key = keyInput.value.trim();
+      if(!key){
+        statusEl.textContent = 'Kein Key eingegeben.';
+        statusEl.className = 'small-note status-bad';
+        return;
+      }
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Prüfe…';
+      statusEl.textContent = 'Key wird geprüft…';
+      statusEl.className = 'small-note';
+      const result = await testGeminiKey(key);
+      if(result.ok){
+        localStorage.setItem(AI_KEY_STORAGE, key);
+        // Re-render so the normal bulk-grade button takes over now that a
+        // valid key exists — same review filter stays active.
+        const activeFilter = document.querySelector('#review-filters button.active').dataset.f;
+        document.getElementById('screen-results').innerHTML = renderResultsHtml();
+        wireResultsEventsPreserveFilter(activeFilter);
+      } else {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Speichern & testen';
+        statusEl.textContent = '✗ Key ungültig: ' + result.message;
+        statusEl.className = 'small-note status-bad';
+      }
+    });
   }
 }
 
@@ -1730,7 +1895,11 @@ async function runAiGradeQuestion(sess, q){
     // it was last validated (revoked, quota exhausted, etc.) — re-check once
     // per session so the start screen's notice is accurate whenever the user
     // gets back there, without re-pinging on every single failure in a batch.
-    if(!sess.aiKeyRecheckDone){
+    // Skip this for 503/429: those are Google's servers being transiently
+    // overloaded/rate-limited, already retried in callGeminiApi(), and say
+    // nothing about whether the key itself is still valid.
+    const isTransient = err && (err.status === 503 || err.status === 429);
+    if(!isTransient && !sess.aiKeyRecheckDone){
       sess.aiKeyRecheckDone = true;
       refreshAiKeyStatus();
     }
@@ -2106,6 +2275,7 @@ async function loadQuestions(){
     sheetStatus.className = 'small-note status-ok';
     setSheetToggleBadge(`✓ ${ALL_Q.length} geladen`);
     startBtn.classList.remove('btn-not-ready');
+    updateShareableUrl(); // canonicalizes a bare-path sheet injection into ?sheet=... too
   } catch(err){
     sheetStatus.textContent = '✗ Fehler beim Laden: ' + ((err && err.message) || err) +
       ' — Sheet muss auf "Jeder mit dem Link kann ansehen" freigegeben sein.';
