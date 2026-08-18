@@ -1673,29 +1673,44 @@ function renderResultsHtml(){
   if(totalOpen > 0){
     if(getAiKey()){
       if(session.aiGradingRunning){
-        bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn" disabled>⏳ KI-Bewertung läuft…</button>`;
+        bulkAiBtnHtml = `<button class="btn btn-blue" id="ai-grade-all-btn" disabled>⏳ KI-Bewertung läuft…</button>`;
       } else if(ungradedOpen === 0){
-        bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn" disabled>✓ KI-Bewertung abgeschlossen</button>`;
+        bulkAiBtnHtml = `<button class="btn btn-blue" id="ai-grade-all-btn" disabled>✓ KI-Bewertung abgeschlossen</button>`;
       } else {
-        bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-grade-all-btn">✨ Alle offenen Fragen mit KI bewerten (${ungradedOpen})</button>`;
+        bulkAiBtnHtml = `<button class="btn btn-blue" id="ai-grade-all-btn">✨ Alle offenen Fragen mit KI bewerten (${ungradedOpen})</button>`;
       }
     } else {
       // No key yet — offer setup right here instead of forcing a trip back to
       // the start screen (and definitely not a full retry of the exam) just
-      // to see what the AI evaluation adds.
-      bulkAiBtnHtml = `<button class="btn btn-secondary" id="ai-setup-toggle-btn">✨ KI-Bewertung einrichten</button>`;
-      aiSetupHtml = `<div class="toolbar-row fill-row hidden" id="results-ai-setup" style="margin-bottom:10px">
-        <input type="password" id="results-ai-key-input" placeholder="Google Gemini API-Key einfügen">
-        <button class="btn btn-primary" id="results-ai-key-save">Speichern &amp; testen</button>
-      </div>
-      <div class="small-note" id="results-ai-key-status" style="margin-bottom:24px"></div>`;
+      // to see what the AI evaluation adds. Same field/layout/info copy as
+      // the start screen's KI-Auswertung card, so it reads as the same
+      // feature rather than a stripped-down duplicate.
+      bulkAiBtnHtml = `<button class="btn btn-blue" id="ai-setup-toggle-btn">✨ KI-Bewertung einrichten</button>`;
+      aiSetupHtml = `<div class="hidden" id="results-ai-setup" style="margin-bottom:24px">
+        <div class="field">
+          <label>Google Gemini API-Key (kostenlos)</label>
+          <input type="password" id="results-ai-key-input" placeholder="Einfügen, um KI-Bewertung zu aktivieren">
+        </div>
+        <div class="toolbar-row fill-row">
+          <button class="btn btn-primary" id="results-ai-key-save">Speichern &amp; testen</button>
+          <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" class="btn-link" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">API-Key erstellen ↗</a>
+        </div>
+        <div class="small-note" id="results-ai-key-status" style="margin-top:0"></div>
+        <div class="small-note">
+          Kostenlos auf <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener">aistudio.google.com/api-keys</a>
+          erstellbar (Google-Konto nötig, keine Zahlungsmethode). Der Key wird ausschließlich lokal in Ihrem
+          Browser gespeichert (localStorage) und bei Bewertung direkt von Ihrem Browser an Google gesendet — er
+          läuft über keinen Server dieser Anwendung. Ohne Key müssen die offenen Fragen zur Musterlösung selbst
+          abgeglichen und abgeschätzt werden!
+        </div>
+      </div>`;
     }
   }
   html += `<div class="toolbar-row fill-row" style="margin-bottom:24px">
     <button class="btn btn-orange" id="reconfigure-btn">Konfiguration überarbeiten</button>
     <button class="btn btn-primary" id="restart-btn">Neue Simulation starten</button>
-    <button class="btn btn-secondary" id="export-csv-btn">📥 Ergebnisse als CSV speichern</button>
     ${bulkAiBtnHtml}
+    <button class="btn btn-secondary" id="export-csv-btn">📥 Ergebnisse als CSV speichern</button>
   </div>
   ${aiSetupHtml}`;
 
