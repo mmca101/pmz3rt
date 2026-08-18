@@ -815,11 +815,15 @@ function scheduleReformat(rawText, targetEl){
   if(!rawText || !getAiKey()) return;
   const cached = getCachedReformat(rawText);
   if(cached){ targetEl.innerHTML = renderMarkdownSafe(cached); return; }
+  // A live call is about to go out — swap the plain-markdown text for a
+  // loading note first, instead of letting the raw rendering sit there and
+  // then jump-cut to the reformatted version once the response lands.
+  targetEl.innerHTML = '<span style="color:var(--muted)">Musterlösung lädt …</span>';
   aiReformatAnswer(rawText).then(formatted => {
-    if(!formatted) return;
+    if(!formatted){ targetEl.innerHTML = renderMarkdownSafe(rawText); return; }
     setCachedReformat(rawText, formatted);
     targetEl.innerHTML = renderMarkdownSafe(formatted);
-  }).catch(()=>{ /* silently keep the plain-markdown fallback already shown */ });
+  }).catch(()=>{ targetEl.innerHTML = renderMarkdownSafe(rawText); }); // fall back to the plain rendering on failure
 }
 
 // "gemini-flash-latest" is Google's rolling alias for their current Flash
