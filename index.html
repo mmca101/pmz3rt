@@ -236,16 +236,16 @@ input[type=range]{accent-color:var(--blue)}
 .reader-play-btn{background:var(--pm-blue);color:#fff;border:none;width:36px;height:36px;border-radius:50%;font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
 .reader-play-btn:hover{background:var(--pm-blue-d)}
 .reader-speed{border:1px solid var(--grey);border-radius:6px;padding:5px 6px;font-size:12px;background:#fff;color:var(--navy2);cursor:pointer}
-.zoom-control{position:fixed;left:18px;bottom:18px;background:#fff;border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.22);display:flex;align-items:center;gap:3px;padding:3px;z-index:41}
+.zoom-control{position:fixed;left:18px;bottom:18px;background:#fff;border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.22);display:flex;align-items:center;gap:4px;padding:4px;z-index:41}
 /* The exam sidebar (250px, in-flow on desktop) would otherwise sit under
    this control's default left offset — push it clear of the sidebar only
    while the exam screen is actually showing it. On mobile the sidebar is
    an off-canvas drawer, not in-flow, so no offset is needed there. */
 #screen-exam:not(.hidden) ~ #zoom-control{left:268px}
-.zoom-control button{background:var(--pm-blue);color:#fff;border:none;width:16px;height:16px;border-radius:50%;font-size:10px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
+.zoom-control button{background:var(--pm-blue);color:#fff;border:none;width:19px;height:19px;border-radius:50%;font-size:12px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
 .zoom-control button:hover:not(:disabled){background:var(--pm-blue-d)}
 .zoom-control button:disabled{opacity:.35;cursor:default}
-.zoom-control .zoom-level{font-size:9px;font-weight:700;color:var(--navy2);min-width:20px;text-align:center;padding:0 1px}
+.zoom-control .zoom-level{font-size:11px;font-weight:700;color:var(--navy2);min-width:24px;text-align:center;padding:0 2px}
 .modal{background:#fff;border-radius:10px;padding:26px 28px;max-width:420px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3)}
 .modal h3{margin:0 0 10px;font-size:16px}
 .modal p{font-size:13.5px;color:var(--muted);line-height:1.5;margin:0 0 20px}
