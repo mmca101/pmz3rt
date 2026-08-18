@@ -8,6 +8,12 @@
      this stops it from sending anything (e.g. a stored Gemini key) anywhere
      except this same origin and Google's Generative Language API. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://generativelanguage.googleapis.com https://docs.google.com https://*.googleusercontent.com; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1c2f4d">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SiM-C3RT">
 <title>SiM-C3RT v0.5</title>
 <style>
 :root{
@@ -289,6 +295,7 @@ input[type=range]{accent-color:var(--blue)}
 /* ---------- Mobile: collapse the question overview into a burger-toggled
    slide-in drawer, and tighten up spacing generally ---------- */
 @media (max-width: 760px){
+  #screen-start{padding-bottom:16px}
   .main-actions-row{flex-direction:column}
   .secondary-actions-row{display:flex;gap:10px}
   .secondary-actions-row .btn{padding:11.5px 8px;font-size:12.5px;white-space:nowrap}
@@ -891,6 +898,10 @@ async function aiGradeOpenQuestion(q, candidateText){
 
 // ---------- persisted configurator state (survives reloads until reset) ----------
 const CONFIG_STORAGE_KEY = 'simc3rt_config';
+// Remembers the last sheet that loaded successfully, independent of the URL
+// — needed so an installed PWA (fixed start_url, no ?sheet= to read) still
+// opens on the same catalog instead of an empty "no source" state.
+const SHEET_URL_STORAGE = 'simc3rt_last_sheet';
 function loadSavedConfig(){
   try{
     const raw = localStorage.getItem(CONFIG_STORAGE_KEY);
@@ -2663,6 +2674,7 @@ async function loadQuestions(){
     setSheetToggleBadge(`✓ ${ALL_Q.length} geladen`);
     standNote.classList.remove('hidden');
     startBtn.classList.remove('btn-not-ready');
+    try{ localStorage.setItem(SHEET_URL_STORAGE, sheetUrlInput.value.trim()); } catch(e){ /* storage unavailable — non-essential */ }
     updateShareableUrl(); // canonicalizes a bare-path sheet injection into ?sheet=... too
   } catch(err){
     standNote.classList.add('hidden');
@@ -2702,9 +2714,26 @@ if(injectedSheetUrl){
   const isFullUrl = /^https?:\/\//i.test(injectedSheetUrl);
   const id = extractSheetId(injectedSheetUrl);
   sheetUrlInput.value = (!isFullUrl && id) ? `https://docs.google.com/spreadsheets/d/${id}/edit` : injectedSheetUrl;
+} else {
+  // No sheet in the address bar — e.g. an installed PWA launched from its
+  // fixed start_url, or just a bare revisit — fall back to the last one
+  // that loaded successfully instead of starting empty.
+  let lastSheetUrl = null;
+  try{ lastSheetUrl = localStorage.getItem(SHEET_URL_STORAGE); } catch(e){ /* storage unavailable */ }
+  if(lastSheetUrl) sheetUrlInput.value = lastSheetUrl;
 }
 
 loadQuestions();
+
+// Best-effort app-shell caching for offline/PWA use — never touches the
+// live Sheets/Gemini calls (service worker ignores cross-origin requests),
+// so a failed/blocked registration just means no offline shell, nothing
+// about the exam itself depends on this.
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
 
 })();
 </script>
