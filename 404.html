@@ -81,6 +81,7 @@ button{font-family:inherit;cursor:pointer}
 .main-actions-row .btn{flex:1;text-align:center}
 .fill-row .btn, .fill-row .btn-link{flex:1 1 150px;text-align:center}
 .btn{border:none;border-radius:6px;padding:10px 18px;font-size:14px;font-weight:600}
+.btn:disabled{opacity:.55;cursor:not-allowed}
 .btn-primary{background:var(--green);color:#fff}
 .btn-not-ready{opacity:.55;cursor:not-allowed}
 .btn-primary:hover{background:var(--green-d)}
@@ -98,6 +99,10 @@ button{font-family:inherit;cursor:pointer}
 .ke-filter-row .btn-link{padding:5px 10px;font-size:12px;flex:1;text-align:center;white-space:nowrap}
 .ke-filter-row .ke-action-btn{background:rgba(181,104,13,.12);color:var(--amber-d);border-color:rgba(181,104,13,.3)}
 .ke-filter-row .ke-action-btn:hover{background:rgba(181,104,13,.22)}
+.ke-filter-row .ke-action-blue{background:rgba(29,78,216,.08);color:var(--blue);border-color:rgba(29,78,216,.15)}
+.ke-filter-row .ke-action-blue:hover{background:rgba(29,78,216,.15)}
+.ke-filter-row .ke-action-gray{background:#e6e9ee;color:var(--navy2);border-color:#d5dae2}
+.ke-filter-row .ke-action-gray:hover{background:#d9dee6}
 .small-note{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5}
 .small-note.status-ok{color:var(--green-d);font-weight:600}
 .small-note.status-bad{color:var(--danger);font-weight:600}
@@ -388,15 +393,18 @@ input[type=range]{accent-color:var(--blue)}
           <div class="small-note hidden" id="ke-empty-note" style="margin-top:0">Kein Fragenkatalog geladen — zuerst eine Fragenquelle eintragen.</div>
           <div id="ke-filters-and-grid">
             <div class="toolbar-row ke-filter-row" style="margin-bottom:10px">
-              <button class="btn-link ke-action-btn" id="ke-randomize">🎲 Gewichtung zufällig</button>
+              <button class="btn-link ke-action-btn" id="ke-preset-pruefungsformat">📋 Prüfungsformat</button>
+              <button class="btn-link ke-action-blue" id="ke-randomize">🎲 Gewichtung zufällig</button>
               <button class="btn-link" id="ke-all">Alle auswählen</button>
-              <button class="btn-link ke-action-btn" id="ke-none">Auswahl zurücksetzen</button>
             </div>
             <div class="toolbar-row ke-filter-row" style="margin-bottom:10px">
               <button class="btn-link" data-domain="Kontext">Kontext</button>
               <button class="btn-link" data-domain="Persönliches und Soziales">Persönliches und Soziales</button>
               <button class="btn-link" data-domain="Methoden und Technisches">Methoden und Technisches</button>
               <button class="btn-link" data-domain="Sonstige">Sonstige</button>
+            </div>
+            <div class="toolbar-row ke-filter-row" style="margin-bottom:10px">
+              <button class="btn-link ke-action-gray" id="ke-none">Auswahl zurücksetzen</button>
             </div>
             <div class="ke-grid" id="ke-grid"></div>
           </div>
@@ -618,12 +626,24 @@ function setAiToggleBadge(kiShort){
   aiStatusShort = kiShort;
   updateToggleBadge();
 }
+// Tracks whether the currently-saved key was last confirmed valid, so the
+// save button can be greyed out while the field still matches it — clicking
+// "Speichern & testen" again would just re-run the exact same check.
+let aiKeyKnownValid = false;
+function updateAiKeySaveBtnState(){
+  // Looked up directly (not via the aiKeySaveBtn const declared further
+  // below) since refreshAiKeyStatus() already runs once above that point.
+  const btn = document.getElementById('ai-key-save');
+  if(btn) btn.disabled = aiKeyKnownValid && aiKeyInput.value.trim() === getAiKey() && getAiKey() !== '';
+}
 async function refreshAiKeyStatus(){
   const key = getAiKey();
   if(!key){
     setAiKeyStatus('', null);
     manualGradingNote.classList.remove('hidden');
     setAiToggleBadge('KI');
+    aiKeyKnownValid = false;
+    updateAiKeySaveBtnState();
     return;
   }
   setAiKeyStatus('Key wird geprüft…', null);
@@ -633,14 +653,18 @@ async function refreshAiKeyStatus(){
     setAiKeyStatus('✓ Key gespeichert und gültig – KI-Bewertung ist im Review verfügbar.', 'ok');
     manualGradingNote.classList.add('hidden');
     setAiToggleBadge('KI ✓');
+    aiKeyKnownValid = true;
   } else {
     setAiKeyStatus('✗ Gespeicherter Key ist ungültig: ' + result.message, 'bad');
     manualGradingNote.classList.remove('hidden');
     setAiToggleBadge('KI ✗');
+    aiKeyKnownValid = false;
   }
+  updateAiKeySaveBtnState();
 }
 aiKeyInput.value = getAiKey();
 refreshAiKeyStatus();
+aiKeyInput.addEventListener('input', updateAiKeySaveBtnState);
 
 // Validated eagerly on save (rather than silently on every keystroke) so an
 // invalid or mistyped key is caught here, not discovered only after a full
@@ -668,6 +692,8 @@ aiKeySaveBtn.addEventListener('click', async ()=>{
     setAiKeyStatus('Kein Key eingegeben.', null);
     manualGradingNote.classList.remove('hidden');
     setAiToggleBadge('KI');
+    aiKeyKnownValid = false;
+    updateAiKeySaveBtnState();
     return;
   }
   aiKeySaveBtn.disabled = true;
@@ -675,19 +701,21 @@ aiKeySaveBtn.addEventListener('click', async ()=>{
   setAiKeyStatus('Key wird geprüft…', null);
   setAiToggleBadge('KI …');
   const result = await testGeminiKey(key);
-  aiKeySaveBtn.disabled = false;
   aiKeySaveBtn.textContent = 'Speichern & testen';
   if(result.ok){
     localStorage.setItem(AI_KEY_STORAGE, key);
     setAiKeyStatus('✓ Key gültig und gespeichert – KI-Bewertung ist im Review verfügbar.', 'ok');
     manualGradingNote.classList.add('hidden');
     setAiToggleBadge('KI ✓');
+    aiKeyKnownValid = true;
   } else {
     localStorage.removeItem(AI_KEY_STORAGE); // don't leave a known-bad key active
     setAiKeyStatus('✗ Key ungültig: ' + result.message, 'bad');
     manualGradingNote.classList.remove('hidden');
     setAiToggleBadge('KI ✗');
+    aiKeyKnownValid = false;
   }
+  updateAiKeySaveBtnState();
 });
 aiKeyInput.addEventListener('keydown', (e)=>{
   if(e.key === 'Enter'){ e.preventDefault(); aiKeySaveBtn.click(); }
@@ -995,7 +1023,7 @@ function renderKeGrid(){
         <span>${ke.name}</span>
       </label>
       <div class="ke-weight-control" title="Gewichtung: mehr = anteilig mehr Fragen aus diesem Thema">
-        <input type="range" min="1" max="5" step="1" value="1" class="ke-weight-input" data-key="${ke.key}">
+        <input type="range" min="1" max="7" step="1" value="1" class="ke-weight-input" data-key="${ke.key}">
         <span class="ke-weight-value" data-key-value="${ke.key}">1×</span>
       </div>`;
     grid.appendChild(wrap);
@@ -1011,7 +1039,7 @@ function renderKeGrid(){
     });
   });
   weightsCustomized = false;
-  randomizeWeights();
+  applyPruefungsformatWeights();
   applySavedKeSelection();
 }
 
@@ -1024,6 +1052,31 @@ function randomizeWeights(){
   });
 }
 
+// Real per-KE question counts reported for the actual exam (sums to 61, the
+// default Fragenanzahl) — how many of those end up Checkbox vs. Freitext is
+// still unknown, so that split stays governed by the existing
+// Checkboxfragenanteil slider exactly as for any other weighting. Any KE
+// not covered here (a non-standard sheet) falls back to the neutral 1×.
+const PRUEFUNGSFORMAT_WEIGHTS = {
+  '04.03.01': 3, '04.03.02': 4, '04.03.04': 2, '04.04.03': 4, '04.05.01': 5,
+  '04.05.02': 4, '04.05.03': 5, '04.05.04': 6, '04.05.05': 6, '04.05.07': 2,
+  '04.05.08': 3, '04.05.10': 7, '04.05.11': 6, '04.05.12': 3, 'Sonstige': 1
+};
+function applyPruefungsformatWeights(){
+  grid.querySelectorAll('.ke-weight-input').forEach(input=>{
+    const v = PRUEFUNGSFORMAT_WEIGHTS[input.dataset.key] || 1;
+    input.value = v;
+    keWeights.set(input.dataset.key, v);
+    grid.querySelector(`.ke-weight-value[data-key-value="${input.dataset.key}"]`).textContent = `${v}×`;
+  });
+}
+
+document.getElementById('ke-preset-pruefungsformat').addEventListener('click', ()=>{
+  applyPruefungsformatWeights();
+  weightsCustomized = false; // this *is* the default spread, not a customization worth encoding in the URL
+  updateSummary();
+  persistConfig();
+});
 document.getElementById('ke-randomize').addEventListener('click', ()=>{
   randomizeWeights();
   weightsCustomized = true;
@@ -1137,7 +1190,7 @@ document.getElementById('cfg-reset-btn').addEventListener('click', ()=>{
   document.getElementById('cfg-mc-first').checked = true;
   document.getElementById('cfg-cheat-mode').checked = false;
   focusSlider.value = '19';
-  randomizeWeights(); // true out-of-the-box default is a fresh random spread, not all-1×
+  applyPruefungsformatWeights(); // true out-of-the-box default is the real exam's per-KE spread, not all-1×
   weightsCustomized = false;
   updateFocusLabel();
   updateSummary();
