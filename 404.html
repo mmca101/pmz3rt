@@ -660,7 +660,7 @@ async function refreshAiKeyStatus(){
   setAiToggleBadge('KI …');
   const result = await testGeminiKey(key);
   if(result.ok){
-    setAiKeyStatus('✓ Key gespeichert und gültig – KI-Bewertung ist im Review verfügbar.', 'ok');
+    setAiKeyStatus('✓ Key gespeichert und gültig.', 'ok');
     manualGradingNote.classList.add('hidden');
     setAiToggleBadge('KI ✓');
     aiKeyKnownValid = true;
@@ -714,7 +714,7 @@ aiKeySaveBtn.addEventListener('click', async ()=>{
   aiKeySaveBtn.textContent = 'Speichern & testen';
   if(result.ok){
     localStorage.setItem(AI_KEY_STORAGE, key);
-    setAiKeyStatus('✓ Key gültig und gespeichert – KI-Bewertung ist im Review verfügbar.', 'ok');
+    setAiKeyStatus('✓ Key gespeichert und gültig.', 'ok');
     manualGradingNote.classList.add('hidden');
     setAiToggleBadge('KI ✓');
     aiKeyKnownValid = true;
