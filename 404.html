@@ -156,6 +156,8 @@ input[type=range]{accent-color:var(--blue)}
 .circles{display:flex;flex-wrap:wrap;gap:10px;padding:6px 16px 10px}
 .circle{width:30px;height:30px;border-radius:50%;background:var(--grey-d);color:#132;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;border:none;color:#1c2430}
 .circle.answered{background:var(--green);color:#fff}
+.circle.cheat-correct{background:var(--green);color:#fff}
+.circle.cheat-wrong{background:var(--danger);color:#fff}
 .circle.bookmarked{background:var(--yellow);color:var(--yellow-d)}
 .circle.viewed{background:var(--viewed);color:#fff}
 .circle.current{background:var(--pm-blue-d);color:#fff;box-shadow:0 0 0 2px #ffd75e inset}
@@ -1354,11 +1356,14 @@ function refreshCircleStates(){
   document.querySelectorAll('.circle').forEach(btn=>{
     const idx = parseInt(btn.dataset.idx,10);
     const q = session.questions[idx];
-    btn.classList.remove('answered','bookmarked','current','viewed');
-    if(idx === currentIndex){ btn.classList.add('current'); }
-    else if(session.bookmarks.has(q.id)){ btn.classList.add('bookmarked'); }
-    else if(questionStatus(q)){ btn.classList.add('answered'); }
-    else if(session.viewed.has(q.id)){ btn.classList.add('viewed'); }
+    btn.classList.remove('answered','bookmarked','current','viewed','cheat-correct','cheat-wrong');
+    if(idx === currentIndex){ btn.classList.add('current'); return; }
+    if(session.bookmarks.has(q.id)){ btn.classList.add('bookmarked'); return; }
+    const cheatResult = cheatEvalResult(q);
+    if(cheatResult === true){ btn.classList.add('cheat-correct'); return; }
+    if(cheatResult === false){ btn.classList.add('cheat-wrong'); return; }
+    if(questionStatus(q)){ btn.classList.add('answered'); return; }
+    if(session.viewed.has(q.id)){ btn.classList.add('viewed'); }
   });
 }
 
@@ -1504,33 +1509,61 @@ function triggerCheatReformat(q){
   const musterEl = document.querySelector('#cheat-result .musterantwort');
   if(musterEl) scheduleReformat(q.answer, musterEl);
 }
+// Some sheet rows have "Ergänzende Informationen" that's just a copy of the
+// question (and, for MC, the options) rather than genuinely supplementary
+// text — showing that back as "Zusatzinfo" is just noise, so treat it as
+// absent wherever it's essentially the same text as the question itself.
+function normalizeForCompare(s){
+  return (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+function hasUsefulInfo(q){
+  if(!q.info) return false;
+  const infoNorm = normalizeForCompare(q.info);
+  if(!infoNorm) return false;
+  const questionText = q.type === 'mc'
+    ? q.stem + ' ' + q.options.map(o => o.letter + ') ' + o.text).join(' ')
+    : q.stem;
+  const stemNorm = normalizeForCompare(questionText);
+  if(!stemNorm) return true;
+  return infoNorm !== stemNorm && !stemNorm.includes(infoNorm) && !infoNorm.includes(stemNorm);
+}
 function cheatResultBody(q){
   if(q.type === 'mc'){
     const r = gradeMC(q);
     const statusText = r === true ? '✓ Richtig' : r === false ? '✗ Falsch' : '– Nicht beantwortet';
     const statusClass = r === true ? 'ok' : 'bad';
     return `<div class="rowval cheat-status ${statusClass}">${statusText}</div>` +
-      (q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${renderMarkdownSafe(q.info)}</div>` : '');
+      (hasUsefulInfo(q) ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${renderMarkdownSafe(q.info)}</div>` : '');
   }
   const fb = session.aiFeedback.get(q.id);
+  const sg = session.selfGrade.get(q.id); // set by AI grading or manual self-grade below
   let fbHtml = '';
   if(fb && fb.feedback){
-    const sg = session.selfGrade.get(q.id); // set alongside aiFeedback by runAiGradeQuestion()
     const fbClass = sg === true ? 'correct' : sg === false ? 'wrong' : '';
-    const statusHtml = sg === true ? '<div class="rowval cheat-status ok">✓ Richtig</div>'
-      : sg === false ? '<div class="rowval cheat-status bad">✗ Falsch</div>' : '';
-    fbHtml = `${statusHtml}<div class="ai-feedback ${fbClass}"><strong>KI-Einschätzung:</strong> ${renderMarkdownSafe(fb.feedback)}</div>`;
+    fbHtml = `<div class="ai-feedback ${fbClass}"><strong>KI-Einschätzung:</strong> ${renderMarkdownSafe(fb.feedback)}</div>`;
   } else if(fb && fb.error){
     fbHtml = `<div class="ai-feedback error"><strong>KI-Bewertung fehlgeschlagen:</strong> ${escapeHtml(fb.error)}</div>`;
   }
-  let aiBtnHtml = '';
-  if(getAiKey() && !(fb && fb.feedback)){
-    aiBtnHtml = `<button class="ai-grade-btn" id="cheat-ai-btn" style="margin-top:10px">${fb && fb.error ? '🔁 KI erneut versuchen' : '✨ Mit KI bewerten'}</button>`;
+  const statusHtml = sg === true ? '<div class="rowval cheat-status ok">✓ Richtig</div>'
+    : sg === false ? '<div class="rowval cheat-status bad">✗ Falsch</div>' : '';
+  // Same manual grading as the results page when no AI key is configured —
+  // this page never offers to set one up, to keep it out of the way here.
+  let actionHtml = '';
+  if(getAiKey()){
+    if(!(fb && fb.feedback)){
+      actionHtml = `<button class="ai-grade-btn" id="cheat-ai-btn" style="margin-top:10px">${fb && fb.error ? '🔁 KI erneut versuchen' : '✨ Mit KI bewerten'}</button>`;
+    }
+  } else {
+    actionHtml = `<div class="self-grade-btns" id="cheat-self-grade-btns" style="margin-top:10px">
+      <button data-g="true" class="${sg===true?'chosen-ok':''}">War richtig</button>
+      <button data-g="false" class="${sg===false?'chosen-bad':''}">War falsch</button>
+    </div>`;
   }
   return `<div class="rowlbl">Musterantwort</div>
     <div class="rowval musterantwort">${renderMarkdownSafe(q.answer)}</div>
-    ${q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${renderMarkdownSafe(q.info)}</div>` : ''}
-    ${fbHtml}${aiBtnHtml}`;
+    ${hasUsefulInfo(q) ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${renderMarkdownSafe(q.info)}</div>` : ''}
+    ${statusHtml}
+    ${fbHtml}${actionHtml}`;
 }
 // Before reveal, the panel collapses to a single-line "🔓 Cheat-Modus
 // aktiviert" banner — never the actual result — so opening/answering a
@@ -1554,6 +1587,16 @@ function renderCheatRevealBtn(q){
   if(session.cheatRevealed.has(q.id)) return '';
   return `<button class="btn btn-cheat" id="cheat-reveal-btn">Ergebnis anzeigen</button>`;
 }
+// Only counts a question as "cheat-evaluated" once its result has actually
+// been revealed — an MC question resolves as soon as it's answered, a
+// Freitext one only once AI or manual self-grading has run.
+function cheatEvalResult(q){
+  if(!document.getElementById('cfg-cheat-mode')?.checked) return null;
+  if(!session.cheatRevealed.has(q.id)) return null;
+  if(q.type === 'mc') return gradeMC(q);
+  const sg = session.selfGrade.get(q.id);
+  return typeof sg === 'boolean' ? sg : null;
+}
 function wireCheatAiBtn(q){
   const cheatAiBtn = document.getElementById('cheat-ai-btn');
   if(cheatAiBtn){
@@ -1566,8 +1609,19 @@ function wireCheatAiBtn(q){
       if(session !== mySession) return; // a new exam was started meanwhile
       const panel = document.getElementById('cheat-panel');
       if(panel){ panel.outerHTML = renderCheatPanel(q); wireCheatPanel(q); }
+      refreshCircleStates();
     });
   }
+}
+function wireCheatSelfGrade(q){
+  document.querySelectorAll('#cheat-self-grade-btns button[data-g]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      session.selfGrade.set(q.id, b.dataset.g === 'true');
+      const panel = document.getElementById('cheat-panel');
+      if(panel){ panel.outerHTML = renderCheatPanel(q); wireCheatPanel(q); }
+      refreshCircleStates();
+    });
+  });
 }
 function wireCheatPanel(q){
   const revealBtn = document.getElementById('cheat-reveal-btn');
@@ -1583,16 +1637,20 @@ function wireCheatPanel(q){
       if(panel) panel.classList.remove('slim');
       if(q.type === 'mc') applyCheatMcColoring(q);
       resultEl.textContent = 'Ergebnis';
+      refreshCircleStates();
       setTimeout(()=>{
         if(session !== mySession) return; // a new exam was started meanwhile
         if(document.getElementById('cheat-result') !== resultEl) return; // question changed meanwhile
         resultEl.innerHTML = cheatResultBody(q);
         wireCheatAiBtn(q);
+        wireCheatSelfGrade(q);
         triggerCheatReformat(q);
+        refreshCircleStates();
       }, 2000);
     });
   }
   wireCheatAiBtn(q);
+  wireCheatSelfGrade(q);
   if(session.cheatRevealed.has(q.id)){
     if(q.type === 'mc') applyCheatMcColoring(q);
     else triggerCheatReformat(q);
@@ -2195,7 +2253,7 @@ function renderReviewItem(q, idx){
       <div class="rowval"><em>keine Antwort eingegeben — zählt als falsch</em></div>
       <div class="rowlbl">Musterantwort</div>
       <div class="rowval musterantwort">${renderMarkdownSafe(q.answer)}</div>
-      ${q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${renderMarkdownSafe(q.info)}</div>` : ''}`;
+      ${hasUsefulInfo(q) ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${renderMarkdownSafe(q.info)}</div>` : ''}`;
   } else {
     const a = session.answers.get(q.id);
     const sg = session.selfGrade.get(q.id);
@@ -2223,7 +2281,7 @@ function renderReviewItem(q, idx){
       <div class="rowval">${a.openHtml}</div>
       <div class="rowlbl">Musterantwort</div>
       <div class="rowval musterantwort">${renderMarkdownSafe(q.answer)}</div>
-      ${q.info ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${renderMarkdownSafe(q.info)}</div>` : ''}
+      ${hasUsefulInfo(q) ? `<div class="rowlbl">Zusatzinfo</div><div class="rowval">${renderMarkdownSafe(q.info)}</div>` : ''}
       ${fbHtml}
       <div class="self-grade-btns">
         <button data-g="true" class="${sg===true?'chosen-ok':''}">War richtig</button>
