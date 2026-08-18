@@ -385,18 +385,21 @@ input[type=range]{accent-color:var(--blue)}
       <details class="config-section">
         <summary><span>Kompetenzelemente</span><span class="config-section-count" id="ke-toggle-badge"></span></summary>
         <div class="config-section-body">
-          <div class="toolbar-row ke-filter-row" style="margin-bottom:10px">
-            <button class="btn-link ke-action-btn" id="ke-randomize">🎲 Gewichtung zufällig</button>
-            <button class="btn-link" id="ke-all">Alle auswählen</button>
-            <button class="btn-link ke-action-btn" id="ke-none">Auswahl zurücksetzen</button>
+          <div class="small-note hidden" id="ke-empty-note" style="margin-top:0">Kein Fragenkatalog geladen — zuerst eine Fragenquelle eintragen.</div>
+          <div id="ke-filters-and-grid">
+            <div class="toolbar-row ke-filter-row" style="margin-bottom:10px">
+              <button class="btn-link ke-action-btn" id="ke-randomize">🎲 Gewichtung zufällig</button>
+              <button class="btn-link" id="ke-all">Alle auswählen</button>
+              <button class="btn-link ke-action-btn" id="ke-none">Auswahl zurücksetzen</button>
+            </div>
+            <div class="toolbar-row ke-filter-row" style="margin-bottom:10px">
+              <button class="btn-link" data-domain="Kontext">Kontext</button>
+              <button class="btn-link" data-domain="Persönliches und Soziales">Persönliches und Soziales</button>
+              <button class="btn-link" data-domain="Methoden und Technisches">Methoden und Technisches</button>
+              <button class="btn-link" data-domain="Sonstige">Sonstige</button>
+            </div>
+            <div class="ke-grid" id="ke-grid"></div>
           </div>
-          <div class="toolbar-row ke-filter-row" style="margin-bottom:10px">
-            <button class="btn-link" data-domain="Kontext">Kontext</button>
-            <button class="btn-link" data-domain="Persönliches und Soziales">Persönliches und Soziales</button>
-            <button class="btn-link" data-domain="Methoden und Technisches">Methoden und Technisches</button>
-            <button class="btn-link" data-domain="Sonstige">Sonstige</button>
-          </div>
-          <div class="ke-grid" id="ke-grid"></div>
         </div>
       </details>
 
@@ -1065,6 +1068,11 @@ function updateSummary(){
     `${keys.length} Kompetenzelement(e) ausgewählt · ${actualTotal} Fragen in dieser Prüfung${shortfall}.`;
   const keBadge = document.getElementById('ke-toggle-badge');
   if(keBadge) keBadge.textContent = KE_LIST.length === 0 ? '(Keine Quelle gefunden)' : `${keys.length}/${KE_LIST.length} ausgewählt`;
+  // No point showing the selection filters/grid when there's nothing loaded
+  // for them to act on — that reads as a broken/dead feature rather than an
+  // empty one.
+  document.getElementById('ke-empty-note')?.classList.toggle('hidden', KE_LIST.length > 0);
+  document.getElementById('ke-filters-and-grid')?.classList.toggle('hidden', KE_LIST.length === 0);
 }
 grid.addEventListener('change', ()=>{ updateSummary(); persistConfig(); });
 document.getElementById('cfg-count').addEventListener('input', ()=>{ updateSummary(); persistConfig(); });
@@ -2578,6 +2586,7 @@ async function loadQuestions(){
       ' — Sheet muss auf "Jeder mit dem Link kann ansehen" freigegeben sein.';
     sheetStatus.className = 'small-note status-bad';
     setSheetToggleBadge('✗ Fehler');
+    updateSummary();
   } finally {
     sheetReloadBtn.disabled = false;
   }
