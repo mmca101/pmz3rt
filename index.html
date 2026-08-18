@@ -1545,13 +1545,19 @@ function cheatResultBody(q){
     fbHtml = `<div class="ai-feedback error"><strong>KI-Bewertung fehlgeschlagen:</strong> ${escapeHtml(fb.error)}</div>`;
   }
   const statusHtml = sg === true ? '<div class="rowval cheat-status ok">✓ Richtig</div>'
-    : sg === false ? '<div class="rowval cheat-status bad">✗ Falsch</div>' : '';
-  // Same manual grading as the results page when no AI key is configured —
-  // this page never offers to set one up, to keep it out of the way here.
+    : sg === false ? '<div class="rowval cheat-status bad">✗ Falsch</div>'
+    : !hasOpenAnswer(q) ? '<div class="rowval cheat-status bad">– Nicht beantwortet</div>' : '';
+  // With an AI key configured, grading runs automatically as part of the
+  // reveal itself (see wireCheatPanel) — no separate "Mit KI bewerten" button
+  // needed here, only a retry if that attempt failed. Manual self-grading is
+  // the fallback when no key is configured, same as the results page — this
+  // page never offers to set one up, to keep it out of the way here.
   let actionHtml = '';
   if(getAiKey()){
-    if(!(fb && fb.feedback)){
-      actionHtml = `<button class="ai-grade-btn" id="cheat-ai-btn" style="margin-top:10px">${fb && fb.error ? '🔁 KI erneut versuchen' : '✨ Mit KI bewerten'}</button>`;
+    if(fb && fb.error){
+      actionHtml = `<button class="ai-grade-btn" id="cheat-ai-btn" style="margin-top:10px">🔁 KI erneut versuchen</button>`;
+    } else if(!(fb && fb.feedback) && hasOpenAnswer(q)){
+      actionHtml = '<div class="rowval" style="margin-top:8px;color:var(--muted)">⏳ Wird von der KI bewertet…</div>';
     }
   } else {
     actionHtml = `<div class="self-grade-btns" id="cheat-self-grade-btns" style="margin-top:10px">
@@ -1567,10 +1573,11 @@ function cheatResultBody(q){
 }
 // Before reveal, the panel collapses to a single-line "🔓 Cheat-Modus
 // aktiviert" banner — never the actual result — so opening/answering a
-// question can't leak it. The reveal happens in two aria-live steps (the
-// word "Ergebnis" first, then — after a 2s pause — the actual content
-// replaces it) so a screen-reader user gets a short verbal heads-up before
-// the substantive text starts, instead of being cut into it mid-navigation.
+// question can't leak it. The reveal happens in two aria-live steps
+// ("Ergebnis wird geladen…" first, then — after a 2s pause — the actual
+// content replaces it) so a screen-reader user gets a short verbal heads-up
+// before the substantive text starts, instead of being cut into it
+// mid-navigation.
 function renderCheatPanel(q){
   const revealed = session.cheatRevealed.has(q.id);
   const body = revealed ? cheatResultBody(q) : 'aktiviert';
@@ -1623,6 +1630,22 @@ function wireCheatSelfGrade(q){
     });
   });
 }
+// With a key configured, grading happens as soon as the result is revealed —
+// no separate "Mit KI bewerten" click needed. Only runs once per question
+// (a prior success or failure both count as "already attempted"; failures
+// get a manual retry button instead of being silently retried here).
+function maybeAutoGradeCheat(q){
+  if(q.type === 'mc' || !getAiKey() || !hasOpenAnswer(q)) return;
+  const fb = session.aiFeedback.get(q.id);
+  if(fb && (fb.feedback || fb.error)) return;
+  const mySession = session;
+  runAiGradeQuestion(mySession, q).then(()=>{
+    if(session !== mySession) return; // a new exam was started meanwhile
+    const panel = document.getElementById('cheat-panel');
+    if(panel){ panel.outerHTML = renderCheatPanel(q); wireCheatPanel(q); }
+    refreshCircleStates();
+  });
+}
 function wireCheatPanel(q){
   const revealBtn = document.getElementById('cheat-reveal-btn');
   if(revealBtn){
@@ -1636,7 +1659,7 @@ function wireCheatPanel(q){
       if(nav) nav.classList.remove('has-cheat');
       if(panel) panel.classList.remove('slim');
       if(q.type === 'mc') applyCheatMcColoring(q);
-      resultEl.textContent = 'Ergebnis';
+      resultEl.textContent = 'Ergebnis wird geladen…';
       refreshCircleStates();
       setTimeout(()=>{
         if(session !== mySession) return; // a new exam was started meanwhile
@@ -1646,14 +1669,19 @@ function wireCheatPanel(q){
         wireCheatSelfGrade(q);
         triggerCheatReformat(q);
         refreshCircleStates();
+        maybeAutoGradeCheat(q);
       }, 2000);
     });
   }
   wireCheatAiBtn(q);
   wireCheatSelfGrade(q);
   if(session.cheatRevealed.has(q.id)){
-    if(q.type === 'mc') applyCheatMcColoring(q);
-    else triggerCheatReformat(q);
+    if(q.type === 'mc'){
+      applyCheatMcColoring(q);
+    } else {
+      triggerCheatReformat(q);
+      maybeAutoGradeCheat(q);
+    }
   }
 }
 
@@ -2567,7 +2595,14 @@ function injectedSheetUrlFromLocation(){
   return null;
 }
 const injectedSheetUrl = injectedSheetUrlFromLocation();
-if(injectedSheetUrl) sheetUrlInput.value = injectedSheetUrl;
+// The address bar carries just the bare ID (updateShareableUrl() shortens
+// it there deliberately) — but the Fragenkatalog field should still show a
+// real, recognizable Google Sheets URL, not a bare ID that reads as broken.
+if(injectedSheetUrl){
+  const isFullUrl = /^https?:\/\//i.test(injectedSheetUrl);
+  const id = extractSheetId(injectedSheetUrl);
+  sheetUrlInput.value = (!isFullUrl && id) ? `https://docs.google.com/spreadsheets/d/${id}/edit` : injectedSheetUrl;
+}
 
 loadQuestions();
 
