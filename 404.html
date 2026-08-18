@@ -1710,7 +1710,7 @@ function renderResultsHtml(){
     <button class="btn btn-orange" id="reconfigure-btn">Konfiguration überarbeiten</button>
     <button class="btn btn-primary" id="restart-btn">Neue Simulation starten</button>
     ${bulkAiBtnHtml}
-    <button class="btn btn-secondary" id="export-csv-btn">📥 Ergebnisse als CSV speichern</button>
+    <button class="btn btn-secondary" id="export-csv-btn">📥 Ergebnis speichern</button>
   </div>
   ${aiSetupHtml}`;
 
@@ -1771,6 +1771,10 @@ function wireResultsEvents(){
     document.getElementById('screen-results').innerHTML = '';
     document.getElementById('screen-start').classList.remove('hidden');
     session = null;
+    // The AI key may have been added/changed via the results-page setup
+    // form since the start screen last computed its own key status — the
+    // warning banner and KI-Auswertung badge would otherwise stay stale.
+    refreshAiKeyStatus();
   });
 
   const aiAllBtn = document.getElementById('ai-grade-all-btn');
