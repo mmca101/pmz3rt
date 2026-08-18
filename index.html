@@ -459,10 +459,10 @@ input[type=range]{accent-color:var(--blue)}
       </details>
 
       <details class="config-section">
-        <summary><span>Fragenkatalog <span class="badge-note hidden" id="sheet-stand-note">(Stand: 13.08.2026)</span></span><span class="config-section-count" id="sheet-toggle-badge"></span></summary>
+        <summary><span>Fragenkatalogquelle</span><span class="config-section-count" id="sheet-toggle-badge"></span></summary>
         <div class="config-section-body">
           <div class="field">
-            <label>Google-Sheet-URL <span class="badge-note">(es wird nur das erste Tabellenblatt verwendet)</span></label>
+            <label>Google-Sheet-URL <span class="badge-note hidden" id="sheet-stand-note">(Stand: 13.08.2026)</span></label>
             <input type="text" id="cfg-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
           </div>
           <div class="toolbar-row">
@@ -1751,6 +1751,21 @@ function renderCheatRevealBtn(q){
   if(session.cheatRevealed.has(q.id)) return '';
   return `<button class="btn btn-cheat" id="cheat-reveal-btn">Ergebnis anzeigen</button>`;
 }
+function isMobileCheatLayout(){
+  return window.matchMedia('(max-width: 760px)').matches;
+}
+// Mobile: no separate banner below the nav — the reveal button IS the
+// result container, sitting in its own full-width row above Vorherige/
+// Nächste. Pre-reveal it's just the button; on click it's replaced in
+// place by the same result box the desktop panel shows.
+function renderCheatMobileSlot(q){
+  if(!session.cheatRevealed.has(q.id)){
+    return `<button class="btn btn-cheat" id="cheat-reveal-btn" style="width:100%;margin-top:10px">Ergebnis anzeigen</button>`;
+  }
+  return `<div class="cheat-panel" id="cheat-panel" style="margin-top:10px">
+    <div id="cheat-result" aria-live="polite">${cheatResultBody(q)}</div>
+  </div>`;
+}
 // Only counts a question as "cheat-evaluated" once its result has actually
 // been revealed — an MC question resolves as soon as it's answered, a
 // Freitext one only once AI or manual self-grading has run.
@@ -1760,6 +1775,20 @@ function cheatEvalResult(q){
   if(q.type === 'mc') return gradeMC(q);
   const sg = session.selfGrade.get(q.id);
   return typeof sg === 'boolean' ? sg : null;
+}
+// Re-renders whichever cheat slot is currently in the DOM (mobile's merged
+// button/result box, or desktop's panel-below-the-nav) after something
+// async (AI grading, self-grade click) changes what it should show.
+function reRenderCheatSlot(q){
+  const panel = document.getElementById('cheat-panel');
+  if(!panel) return;
+  if(isMobileCheatLayout()){
+    panel.outerHTML = renderCheatMobileSlot(q);
+    wireCheatMobileSlot(q);
+  } else {
+    panel.outerHTML = renderCheatPanel(q);
+    wireCheatPanel(q);
+  }
 }
 function wireCheatAiBtn(q){
   const cheatAiBtn = document.getElementById('cheat-ai-btn');
@@ -1771,8 +1800,7 @@ function wireCheatAiBtn(q){
       cheatAiBtn.textContent = 'Wird bewertet…';
       await runAiGradeQuestion(mySession, q);
       if(session !== mySession) return; // a new exam was started meanwhile
-      const panel = document.getElementById('cheat-panel');
-      if(panel){ panel.outerHTML = renderCheatPanel(q); wireCheatPanel(q); }
+      reRenderCheatSlot(q);
       refreshCircleStates();
     });
   }
@@ -1781,8 +1809,7 @@ function wireCheatSelfGrade(q){
   document.querySelectorAll('#cheat-self-grade-btns button[data-g]').forEach(b=>{
     b.addEventListener('click', ()=>{
       session.selfGrade.set(q.id, b.dataset.g === 'true');
-      const panel = document.getElementById('cheat-panel');
-      if(panel){ panel.outerHTML = renderCheatPanel(q); wireCheatPanel(q); }
+      reRenderCheatSlot(q);
       refreshCircleStates();
     });
   });
@@ -1798,8 +1825,7 @@ function maybeAutoGradeCheat(q){
   const mySession = session;
   runAiGradeQuestion(mySession, q).then(()=>{
     if(session !== mySession) return; // a new exam was started meanwhile
-    const panel = document.getElementById('cheat-panel');
-    if(panel){ panel.outerHTML = renderCheatPanel(q); wireCheatPanel(q); }
+    reRenderCheatSlot(q);
     refreshCircleStates();
   });
 }
@@ -1821,6 +1847,44 @@ function wireCheatPanel(q){
       setTimeout(()=>{
         if(session !== mySession) return; // a new exam was started meanwhile
         if(document.getElementById('cheat-result') !== resultEl) return; // question changed meanwhile
+        resultEl.innerHTML = cheatResultBody(q);
+        wireCheatAiBtn(q);
+        wireCheatSelfGrade(q);
+        triggerCheatReformat(q);
+        refreshCircleStates();
+        maybeAutoGradeCheat(q);
+      }, 2000);
+    });
+  }
+  wireCheatAiBtn(q);
+  wireCheatSelfGrade(q);
+  if(session.cheatRevealed.has(q.id)){
+    if(q.type === 'mc'){
+      applyCheatMcColoring(q);
+    } else {
+      triggerCheatReformat(q);
+      maybeAutoGradeCheat(q);
+    }
+  }
+}
+// Mobile counterpart to wireCheatPanel() — the reveal button IS the result
+// container here, so the click handler replaces it in place with the panel
+// markup instead of mutating an already-present #cheat-result.
+function wireCheatMobileSlot(q){
+  const revealBtn = document.getElementById('cheat-reveal-btn');
+  if(revealBtn){
+    revealBtn.addEventListener('click', ()=>{
+      const mySession = session;
+      session.cheatRevealed.add(q.id);
+      if(q.type === 'mc') applyCheatMcColoring(q);
+      revealBtn.outerHTML = `<div class="cheat-panel" id="cheat-panel" style="margin-top:10px">
+        <div id="cheat-result" aria-live="polite">Ergebnis wird geladen…</div>
+      </div>`;
+      refreshCircleStates();
+      setTimeout(()=>{
+        if(session !== mySession) return; // a new exam was started meanwhile
+        const resultEl = document.getElementById('cheat-result');
+        if(!resultEl) return; // question changed meanwhile
         resultEl.innerHTML = cheatResultBody(q);
         wireCheatAiBtn(q);
         wireCheatSelfGrade(q);
@@ -1892,18 +1956,29 @@ function renderQuestion(){
   }
 
   const cheatModeOn = document.getElementById('cfg-cheat-mode')?.checked;
-  const cheatBtnHtml = cheatModeOn ? renderCheatRevealBtn(q) : '';
+  const mobileCheat = cheatModeOn && isMobileCheatLayout();
 
-  html += `<div class="bottom-nav${cheatBtnHtml ? ' has-cheat' : ''}">
-    <button class="btn btn-secondary" id="bottom-prev">&#8592; Vorherige Frage</button>
-    ${cheatBtnHtml}
-    <button class="btn btn-primary" id="bottom-next">${currentIndex===total-1 ? 'Zum Abschluss' : 'Nächste Frage →'}</button>
-  </div>`;
-
-  // Lowest-priority element on the page — sits below the nav so it never
-  // competes visually with the question/answer/nav that come first.
-  if(cheatModeOn){
-    html += renderCheatPanel(q);
+  if(mobileCheat){
+    // Mobile: the reveal button (and, once clicked, the result it becomes)
+    // sits in its own full-width row above Vorherige/Nächste — no separate
+    // banner below the nav.
+    html += renderCheatMobileSlot(q);
+    html += `<div class="bottom-nav">
+      <button class="btn btn-secondary" id="bottom-prev">&#8592; Vorherige Frage</button>
+      <button class="btn btn-primary" id="bottom-next">${currentIndex===total-1 ? 'Zum Abschluss' : 'Nächste Frage →'}</button>
+    </div>`;
+  } else {
+    const cheatBtnHtml = cheatModeOn ? renderCheatRevealBtn(q) : '';
+    html += `<div class="bottom-nav${cheatBtnHtml ? ' has-cheat' : ''}">
+      <button class="btn btn-secondary" id="bottom-prev">&#8592; Vorherige Frage</button>
+      ${cheatBtnHtml}
+      <button class="btn btn-primary" id="bottom-next">${currentIndex===total-1 ? 'Zum Abschluss' : 'Nächste Frage →'}</button>
+    </div>`;
+    // Lowest-priority element on the page — sits below the nav so it never
+    // competes visually with the question/answer/nav that come first.
+    if(cheatModeOn){
+      html += renderCheatPanel(q);
+    }
   }
 
   wa.innerHTML = html;
@@ -1944,7 +2019,11 @@ function renderQuestion(){
   document.getElementById('bottom-prev').addEventListener('click', goPrev);
   document.getElementById('bottom-next').addEventListener('click', goNext);
 
-  wireCheatPanel(q);
+  if(mobileCheat){
+    wireCheatMobileSlot(q);
+  } else {
+    wireCheatPanel(q);
+  }
   refreshCircleStates();
 }
 
