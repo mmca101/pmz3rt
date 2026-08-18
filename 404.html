@@ -237,6 +237,11 @@ input[type=range]{accent-color:var(--blue)}
 .reader-play-btn{background:var(--pm-blue);color:#fff;border:none;width:36px;height:36px;border-radius:50%;font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
 .reader-play-btn:hover{background:var(--pm-blue-d)}
 .reader-speed{border:1px solid var(--grey);border-radius:6px;padding:5px 6px;font-size:12px;background:#fff;color:var(--navy2);cursor:pointer}
+.zoom-control{position:fixed;left:18px;bottom:18px;background:#fff;border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.22);display:flex;align-items:center;gap:4px;padding:4px;z-index:41}
+.zoom-control button{background:var(--pm-blue);color:#fff;border:none;width:32px;height:32px;border-radius:50%;font-size:19px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
+.zoom-control button:hover:not(:disabled){background:var(--pm-blue-d)}
+.zoom-control button:disabled{opacity:.35;cursor:default}
+.zoom-control .zoom-level{font-size:12px;font-weight:700;color:var(--navy2);min-width:36px;text-align:center;padding:0 2px}
 .modal{background:#fff;border-radius:10px;padding:26px 28px;max-width:420px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3)}
 .modal h3{margin:0 0 10px;font-size:16px}
 .modal p{font-size:13.5px;color:var(--muted);line-height:1.5;margin:0 0 20px}
@@ -530,7 +535,11 @@ input[type=range]{accent-color:var(--blue)}
     <button class="end-btn" id="end-exam-btn">PRÜFUNG BEENDEN</button>
   </div>
   <div class="navbar">
-    <button class="arrow" id="prev-btn">&#8592;</button>
+    <button class="arrow" id="prev-btn" aria-label="Vorherige Frage">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path d="M12.5 4.5 6 10l6.5 5.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
     <div class="navcenter" id="nav-center">Frage 1</div>
     <button class="bookmark-btn" id="bookmark-btn" title="Mit Lesezeichen markieren">
       <svg id="bookmark-icon" width="15" height="17" viewBox="0 0 15 17" xmlns="http://www.w3.org/2000/svg">
@@ -538,7 +547,11 @@ input[type=range]{accent-color:var(--blue)}
       </svg>
       <span>Lesezeichen</span>
     </button>
-    <button class="arrow" id="next-btn">&#8594;</button>
+    <button class="arrow" id="next-btn" aria-label="Nächste Frage">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path d="M7.5 4.5 14 10l-6.5 5.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
   </div>
   <div class="body-wrap">
     <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
@@ -576,6 +589,12 @@ input[type=range]{accent-color:var(--blue)}
 
 <!-- ================= RESULTS SCREEN ================= -->
 <div id="screen-results" class="hidden"></div>
+
+<div class="zoom-control" id="zoom-control">
+  <button type="button" id="zoom-out-btn" aria-label="Verkleinern">−</button>
+  <span class="zoom-level" id="zoom-level-label">100%</span>
+  <button type="button" id="zoom-in-btn" aria-label="Vergrößern">+</button>
+</div>
 
 <script>
 (function(){
@@ -1575,6 +1594,37 @@ if(readerSupported){
     if(wasSpeaking) readerToggle();
   });
 }
+
+// ---------- Whole-app zoom (floating +/- control, bottom-left) ----------
+// A functional 1-9 scale in 20% steps (1=60% ... 3=100% default ... 9=220%),
+// applied via the CSS zoom property on <html> so layout reflows properly
+// (unlike transform:scale, which would just crop/overlap instead of resizing).
+const ZOOM_STORAGE = 'simc3rt_zoom_level';
+const ZOOM_MIN = 1, ZOOM_MAX = 9, ZOOM_DEFAULT = 3;
+function zoomPercentFor(level){ return level * 20 + 40; }
+let zoomLevel = ZOOM_DEFAULT;
+try{
+  const savedZoom = parseInt(localStorage.getItem(ZOOM_STORAGE), 10);
+  if(savedZoom >= ZOOM_MIN && savedZoom <= ZOOM_MAX) zoomLevel = savedZoom;
+} catch(e){ /* storage unavailable — falls back to the default level */ }
+const zoomOutBtn = document.getElementById('zoom-out-btn');
+const zoomInBtn = document.getElementById('zoom-in-btn');
+const zoomLevelLabel = document.getElementById('zoom-level-label');
+function applyZoom(){
+  const pct = zoomPercentFor(zoomLevel);
+  document.documentElement.style.zoom = pct / 100;
+  zoomLevelLabel.textContent = pct + '%';
+  zoomOutBtn.disabled = zoomLevel <= ZOOM_MIN;
+  zoomInBtn.disabled = zoomLevel >= ZOOM_MAX;
+  try{ localStorage.setItem(ZOOM_STORAGE, zoomLevel); } catch(e){ /* non-essential */ }
+}
+zoomOutBtn.addEventListener('click', ()=>{
+  if(zoomLevel > ZOOM_MIN){ zoomLevel--; applyZoom(); }
+});
+zoomInBtn.addEventListener('click', ()=>{
+  if(zoomLevel < ZOOM_MAX){ zoomLevel++; applyZoom(); }
+});
+applyZoom();
 
 // ---------- Cheat-Modus: shows the correct answer / Musterantwort (and an
 // on-demand AI evaluation for open questions) directly on each question's
