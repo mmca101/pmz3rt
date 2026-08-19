@@ -613,7 +613,7 @@ input[type=range]{accent-color:var(--blue)}
 <!-- ================= RESULTS SCREEN ================= -->
 <div id="screen-results" class="hidden"></div>
 
-<div class="zoom-control" id="zoom-control">
+<div class="zoom-control hidden" id="zoom-control">
   <button type="button" id="zoom-out-btn" aria-label="Verkleinern">−</button>
   <span class="zoom-level" id="zoom-level-label">100%</span>
   <button type="button" id="zoom-in-btn" aria-label="Vergrößern">+</button>
@@ -1619,17 +1619,15 @@ if(readerSupported){
 }
 
 // ---------- Whole-app zoom (floating +/- control, bottom-left) ----------
+// Hidden for now (felt more disruptive than helpful) — code kept intact
+// in case it's revisited. Deliberately not persisted: every reload starts
+// back at the default 100%, never remembers a prior session's level.
 // A functional 1-9 scale in 20% steps (1=60% ... 3=100% default ... 9=220%),
 // applied via the CSS zoom property on <html> so layout reflows properly
 // (unlike transform:scale, which would just crop/overlap instead of resizing).
-const ZOOM_STORAGE = 'simc3rt_zoom_level';
 const ZOOM_MIN = 1, ZOOM_MAX = 9, ZOOM_DEFAULT = 3;
 function zoomPercentFor(level){ return level * 20 + 40; }
 let zoomLevel = ZOOM_DEFAULT;
-try{
-  const savedZoom = parseInt(localStorage.getItem(ZOOM_STORAGE), 10);
-  if(savedZoom >= ZOOM_MIN && savedZoom <= ZOOM_MAX) zoomLevel = savedZoom;
-} catch(e){ /* storage unavailable — falls back to the default level */ }
 const zoomOutBtn = document.getElementById('zoom-out-btn');
 const zoomInBtn = document.getElementById('zoom-in-btn');
 const zoomLevelLabel = document.getElementById('zoom-level-label');
@@ -1639,7 +1637,6 @@ function applyZoom(){
   zoomLevelLabel.textContent = pct + '%';
   zoomOutBtn.disabled = zoomLevel <= ZOOM_MIN;
   zoomInBtn.disabled = zoomLevel >= ZOOM_MAX;
-  try{ localStorage.setItem(ZOOM_STORAGE, zoomLevel); } catch(e){ /* non-essential */ }
 }
 zoomOutBtn.addEventListener('click', ()=>{
   if(zoomLevel > ZOOM_MIN){ zoomLevel--; applyZoom(); }
