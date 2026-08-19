@@ -73,9 +73,6 @@ button{font-family:inherit;cursor:pointer}
 .field{flex:1;min-width:180px}
 .field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px}
 .field input[type=number],.field input[type=text],.field input[type=password]{width:100%;padding:9px 10px;border:1px solid var(--grey);border-radius:6px;font-size:14px}
-.field-suffix-wrap{position:relative}
-.field-suffix-wrap input{padding-right:34px}
-.field-suffix{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none}
 .ke-grid{display:flex;flex-direction:column;gap:1px;padding:4px 2px}
 .ke-item-wrap{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;padding:4px 6px;border-radius:6px}
 .ke-item-wrap:hover{background:#f5f7fa}
@@ -394,11 +391,8 @@ input[type=range]{accent-color:var(--blue)}
         <input type="number" id="cfg-count" min="1" max="500" value="61">
       </div>
       <div class="field">
-        <label>Dauer</label>
-        <div class="field-suffix-wrap">
-          <input type="number" id="cfg-time" min="5" max="240" value="90">
-          <span class="field-suffix">min</span>
-        </div>
+        <label>Dauer (min)</label>
+        <input type="number" id="cfg-time" min="5" max="240" value="90">
       </div>
     </div>
     <div class="summary-line hidden" id="cfg-summary"></div>
@@ -407,10 +401,12 @@ input[type=range]{accent-color:var(--blue)}
       <details class="config-section" id="ai-key-card">
         <summary><span>Ergebnisauswertung</span><span class="config-section-count" id="ai-toggle-badge"></span></summary>
         <div class="config-section-body">
-          <label class="ke-item" style="margin-top:0;margin-bottom:14px">
-            <input type="checkbox" id="cfg-cheat-mode">
-            <span>Cheat-Modus aktivieren (nur zum Üben gedacht)<br><span class="badge-note">Zeigt Musterantwort/richtige Antwort direkt auf jeder Fragenseite, statt erst im Ergebnis.</span></span>
-          </label>
+          <div class="cheat-panel" style="margin-top:0;margin-bottom:14px">
+            <label class="ke-item" style="margin-top:0">
+              <input type="checkbox" id="cfg-cheat-mode">
+              <span>Cheat-Modus aktivieren (nur zum Üben gedacht)<br><span class="badge-note">Zeigt Musterantwort/richtige Antwort direkt auf jeder Fragenseite, statt erst im Ergebnis.</span></span>
+            </label>
+          </div>
           <hr class="config-divider">
           <div class="field">
             <label>Kostenlose KI-Auswertungen aktivieren</label>
@@ -423,8 +419,7 @@ input[type=range]{accent-color:var(--blue)}
           </div>
           <div class="small-note" id="ai-key-status" style="margin-top:0"></div>
           <div class="small-note">
-            Kostenlos auf <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener">aistudio.google.com/api-keys</a>
-            erstellbar (Google-Konto nötig, keine Zahlungsmethode). Der Key wird ausschließlich lokal in Ihrem
+            Kostenlos in Google AI Studio erstellbar (Google-Konto nötig, keine Zahlungsmethode). Der Key wird ausschließlich lokal in Ihrem
             Browser gespeichert (localStorage) und bei Bewertung direkt von Ihrem Browser an Google gesendet — er
             läuft über keinen Server dieser Anwendung. Ohne Key müssen die offenen Fragen zur Musterlösung selbst
             abgeglichen und abgeschätzt werden!
@@ -482,14 +477,16 @@ input[type=range]{accent-color:var(--blue)}
             <label>Google-Sheet-URL <span class="badge-note hidden" id="sheet-stand-note">(Stand: 13.08.2026)</span></label>
             <input type="text" id="cfg-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
           </div>
-          <div class="toolbar-row">
-            <button class="btn btn-secondary" id="sheet-reload-btn">Fragen neu laden</button>
+          <div class="toolbar-row fill-row">
+            <button class="btn btn-primary" id="sheet-reload-btn">Fragen laden</button>
+            <button class="btn btn-link" id="sheet-open-btn" disabled>Katalog öffnen</button>
+            <a href="https://docs.google.com/spreadsheets/d/1bpyb94Ys9gumoJ3QtW8ZpQM-ebY1gGtEKNu4qi6AjEo/copy" target="_blank" rel="noopener" class="btn btn-secondary" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">Vorlage erstellen</a>
           </div>
           <div class="small-note" id="sheet-status">Lade Fragen…</div>
           <div class="small-note">
             Fragen werden bei jedem Seitenaufruf direkt aus diesem Sheet geladen (keine im Simulator gespeicherte Kopie).
             Das Sheet muss auf "Jeder mit dem Link kann ansehen" freigegeben sein. Erwartete Spalten: Kompetenzelement,
-            Frage, Antwortmöglichkeit, Ergänzende Informationen. Eigene Fragen erstellen? <a href="https://docs.google.com/spreadsheets/d/1bpyb94Ys9gumoJ3QtW8ZpQM-ebY1gGtEKNu4qi6AjEo/copy" target="_blank" rel="noopener">Eine leere Vorlage als Kopie in Google Drive anlegen ↗</a>.
+            Frage, Antwortmöglichkeit, Ergänzende Informationen.
           </div>
         </div>
       </details>
@@ -2252,8 +2249,7 @@ function renderResultsHtml(){
         </div>
         <div class="small-note" id="results-ai-key-status" style="margin-top:0"></div>
         <div class="small-note">
-          Kostenlos auf <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener">aistudio.google.com/api-keys</a>
-          erstellbar (Google-Konto nötig, keine Zahlungsmethode). Der Key wird ausschließlich lokal in Ihrem
+          Kostenlos in Google AI Studio erstellbar (Google-Konto nötig, keine Zahlungsmethode). Der Key wird ausschließlich lokal in Ihrem
           Browser gespeichert (localStorage) und bei Bewertung direkt von Ihrem Browser an Google gesendet — er
           läuft über keinen Server dieser Anwendung. Ohne Key müssen die offenen Fragen zur Musterlösung selbst
           abgeglichen und abgeschätzt werden!
@@ -2856,6 +2852,16 @@ async function loadQuestions(){
 }
 sheetReloadBtn.addEventListener('click', loadQuestions);
 
+const sheetOpenBtn = document.getElementById('sheet-open-btn');
+function updateSheetOpenBtnState(){
+  sheetOpenBtn.disabled = !extractSheetId(sheetUrlInput.value);
+}
+sheetUrlInput.addEventListener('input', updateSheetOpenBtnState);
+sheetOpenBtn.addEventListener('click', ()=>{
+  const id = extractSheetId(sheetUrlInput.value);
+  if(id) window.open(`https://docs.google.com/spreadsheets/d/${id}/edit`, '_blank', 'noopener');
+});
+
 // Deep-link a question sheet via the page URL, a few ways:
 //   https://sim-c3rt.de/?sheet=ID                                     (canonical — what updateShareableUrl() writes)
 //   https://sim-c3rt.de/?sheet=https://docs.google.com/spreadsheets/d/ID/edit
@@ -2889,6 +2895,7 @@ if(injectedSheetUrl){
   try{ lastSheetUrl = localStorage.getItem(SHEET_URL_STORAGE); } catch(e){ /* storage unavailable */ }
   if(lastSheetUrl) sheetUrlInput.value = lastSheetUrl;
 }
+updateSheetOpenBtnState();
 
 loadQuestions();
 
