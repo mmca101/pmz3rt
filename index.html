@@ -358,6 +358,7 @@ input[type=range]{accent-color:var(--blue)}
   .sidebar-close-btn{display:block}
 
   .workarea{padding:16px 14px 90px}
+  #cheat-ai-btn{width:100%;text-align:center}
   .q-info-row{gap:8px;margin-bottom:14px}
   .q-info-box{min-width:0}
   .q-stem{padding:14px 16px;font-size:14px}
@@ -1758,14 +1759,19 @@ function cheatResultBody(q){
     : !hasOpenAnswer(q) ? '<div class="rowval cheat-status bad">– Nicht beantwortet</div>' : '';
   // With an AI key configured, grading runs automatically as part of the
   // reveal itself (see wireCheatPanel) — no separate "Mit KI bewerten" button
-  // needed here, only a retry if that attempt failed. Manual self-grading is
-  // the fallback when no key is configured, same as the results page — this
-  // page never offers to set one up, to keep it out of the way here.
+  // needed here on first pass. Once a verdict (success or error) exists,
+  // the same button doubles as a manual re-evaluate action — e.g. after
+  // rephrasing the answer below and wanting a fresh AI pass without leaving
+  // the page. Manual self-grading is the fallback when no key is configured,
+  // same as the results page — this page never offers to set one up, to
+  // keep it out of the way here.
   let actionHtml = '';
   if(getAiKey()){
     if(fb && fb.error){
-      actionHtml = `<button class="ai-grade-btn" id="cheat-ai-btn" style="margin-top:10px">🔁 KI erneut versuchen</button>`;
-    } else if(!(fb && fb.feedback) && hasOpenAnswer(q)){
+      actionHtml = `<button class="btn btn-cheat ai-grade-btn" id="cheat-ai-btn" style="margin-top:10px">🔁 KI erneut versuchen</button>`;
+    } else if(fb && fb.feedback){
+      actionHtml = `<button class="btn btn-cheat ai-grade-btn" id="cheat-ai-btn" style="margin-top:10px">🔁 Neu bewerten (nach Überarbeitung)</button>`;
+    } else if(hasOpenAnswer(q)){
       actionHtml = '<div class="rowval" style="margin-top:8px;color:var(--muted)">⏳ Wird von der KI bewertet…</div>';
     }
   } else {
