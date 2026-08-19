@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SiM-C3RT">
-<title>SiM-C3RT v0.8</title>
+<title>SiM-C3RT v0.9</title>
 <style>
 :root{
   --navy:#152238; --navy2:#1c2f4d; --navy3:#24406b;
@@ -81,7 +81,7 @@ button{font-family:inherit;cursor:pointer}
 .ke-weight-control{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);flex:0 0 auto}
 .ke-weight-control input[type=range]{width:90px;vertical-align:middle}
 .ke-weight-value{font-weight:700;color:var(--navy2);min-width:18px;display:inline-block;text-align:right}
-.toolbar-row{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap}
+.toolbar-row{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
 .main-actions-row .btn{flex:1;text-align:center}
 /* Desktop: "unwrap" this grouping div entirely so Regeln/Standard laden
    become direct flex siblings of Simulation starten again — the original
@@ -210,7 +210,7 @@ input[type=range]{accent-color:var(--blue)}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
 .options{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
-.option{display:flex;align-items:flex-start;gap:12px;background:var(--card);border:2px solid #e1e5eb;border-radius:8px;padding:12px 16px;cursor:pointer;font-size:14.5px;line-height:1.5}
+.option{display:flex;align-items:center;gap:12px;background:var(--card);border:2px solid #e1e5eb;border-radius:8px;padding:12px 16px;cursor:pointer;font-size:14.5px;line-height:1.5}
 .option:hover{border-color:var(--pm-blue)}
 .option.selected{border-color:var(--pm-blue);background:var(--pm-info-bg)}
 .option .letter{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:#e6e9ee;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px}
@@ -259,6 +259,13 @@ input[type=range]{accent-color:var(--blue)}
 .zoom-control button:hover:not(:disabled){background:var(--pm-blue-d)}
 .zoom-control button:disabled{opacity:.35;cursor:default}
 .zoom-control .zoom-level{font-size:11px;font-weight:700;color:var(--navy2);min-width:24px;text-align:center;padding:0 2px}
+.cheat-pause-btn{position:fixed;left:18px;bottom:18px;background:var(--amber);color:#fff;border:none;width:36px;height:36px;padding:0;border-radius:50%;box-shadow:0 4px 14px rgba(0,0,0,.22);cursor:pointer;z-index:39;display:flex;align-items:center;justify-content:center}
+.cheat-pause-btn:hover{background:var(--amber-d)}
+.cheat-pause-btn.paused{background:var(--amber-d)}
+.cheat-pause-btn svg, .reader-play-btn svg{display:block}
+.reader-play-btn.reading{background:var(--pm-blue-d)}
+#screen-exam.hidden ~ #pause-timer-btn{display:none}
+#screen-exam:not(.hidden) ~ #pause-timer-btn{left:268px}
 .modal{background:#fff;border-radius:10px;padding:26px 28px;max-width:420px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3)}
 .modal h3{margin:0 0 10px;font-size:16px}
 .modal p{font-size:13.5px;color:var(--muted);line-height:1.5;margin:0 0 20px}
@@ -319,6 +326,8 @@ input[type=range]{accent-color:var(--blue)}
 @media (max-width: 760px){
   #screen-start{padding-bottom:16px}
   #screen-exam:not(.hidden) ~ #zoom-control{left:18px}
+  #screen-exam:not(.hidden) ~ #pause-timer-btn{left:18px}
+  #screen-results{padding-bottom:100px}
   .main-actions-row{flex-direction:column}
   .secondary-actions-row{display:flex;gap:10px}
   .secondary-actions-row .btn{padding:11.5px 8px;font-size:12.5px;white-space:nowrap}
@@ -348,16 +357,17 @@ input[type=range]{accent-color:var(--blue)}
   .sidebar.mobile-open{transform:translateX(0)}
   .sidebar-close-btn{display:block}
 
-  .workarea{padding:16px 14px 40px}
+  .workarea{padding:16px 14px 90px}
+  #cheat-ai-btn{width:100%;text-align:center}
   .q-info-row{gap:8px;margin-bottom:14px}
   .q-info-box{min-width:0}
   .q-stem{padding:14px 16px;font-size:14px}
-  .bottom-nav{flex-direction:column-reverse;gap:8px}
+  .bottom-nav{flex-direction:column-reverse;gap:14px}
   .bottom-nav button{width:100%;text-align:center}
   /* Cheat-Modus's centered-inline row is a desktop-only treatment — on
      mobile it should look exactly like the regular (no-cheat) nav: one
      full-width button per row, not three squeezed into one line. */
-  .bottom-nav.has-cheat{display:flex;flex-direction:column-reverse;gap:8px}
+  .bottom-nav.has-cheat{display:flex;flex-direction:column-reverse;gap:14px}
   .bottom-nav.has-cheat button{width:100%;padding:10px 18px;font-size:14px;text-align:center}
   .rte{min-height:130px}
 }
@@ -412,7 +422,7 @@ input[type=range]{accent-color:var(--blue)}
             <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" class="btn-link" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">API-Key erstellen</a>
             <button class="btn btn-secondary" id="ai-key-clear">Entfernen</button>
           </div>
-          <div class="small-note" id="ai-key-status" style="margin-top:0"></div>
+          <div class="small-note" id="ai-key-status"></div>
           <div class="small-note">
             Kostenlos in Google AI Studio erstellbar (Google-Konto nötig, keine Zahlungsmethode). Der Key wird ausschließlich lokal in Ihrem
             Browser gespeichert (localStorage) und bei Bewertung direkt von Ihrem Browser an Google gesendet — er
@@ -422,7 +432,7 @@ input[type=range]{accent-color:var(--blue)}
           <div class="cheat-panel" style="margin-bottom:0">
             <label class="ke-item" style="margin-top:0">
               <input type="checkbox" id="cfg-cheat-mode">
-              <span>Zusätzlich Cheat-Modus aktivieren (nur zum Üben gedacht)<br><span class="badge-note">Zeigt Musterantwort/richtige Antwort direkt auf jeder Fragenseite, statt erst im Ergebnis.</span></span>
+              <span>Zusätzlich Cheat-Modus aktivieren (nur zum Üben gedacht)<br><span class="badge-note">Zeigt Musterantwort/richtige Antwort direkt auf jeder Fragenseite, statt erst im Ergebnis. Blendet außerdem eine Pause-Schaltfläche unten links ein, mit der sich der Timer während der Prüfung anhalten und fortsetzen lässt.</span></span>
             </label>
           </div>
         </div>
@@ -538,7 +548,7 @@ input[type=range]{accent-color:var(--blue)}
       </svg>
       <span>mmca101/simc3rt</span>
     </a>
-    <span class="version-badge">v0.8</span>
+    <span class="version-badge">v0.9</span>
   </div>
 </div>
 
@@ -550,7 +560,7 @@ input[type=range]{accent-color:var(--blue)}
         <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
     </button>
-    <span class="version-badge topbar-version">v0.8</span>
+    <span class="version-badge topbar-version">v0.9</span>
     <div class="brand">SiM-C3RT</div>
     <div class="timer" id="timer-display">90:00</div>
     <button class="end-btn" id="end-exam-btn">PRÜFUNG BEENDEN</button>
@@ -585,7 +595,7 @@ input[type=range]{accent-color:var(--blue)}
     </div>
   </div>
   <div class="reader-overlay reader-hidden" id="reader-overlay">
-    <button type="button" class="reader-play-btn" id="reader-play-btn" title="Frage vorlesen" aria-label="Frage vorlesen">▶</button>
+    <button type="button" class="reader-play-btn" id="reader-play-btn" title="Frage vorlesen" aria-label="Frage vorlesen"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3z"/><path d="M16.5 12c0-1.77-.77-3.29-2-4.28v8.56c1.23-.99 2-2.51 2-4.28z"/><path d="M14.5 3.23v2.06c2.89 1.04 5 3.77 5 6.71s-2.11 5.67-5 6.71v2.06c4.01-1.09 7-4.9 7-9.09s-2.99-7.83-7-8.45z"/></svg></button>
     <select id="reader-speed" class="reader-speed" title="Vorlesegeschwindigkeit" aria-label="Vorlesegeschwindigkeit">
       <option value="0.75">0.75×</option>
       <option value="1" selected>1×</option>
@@ -616,6 +626,8 @@ input[type=range]{accent-color:var(--blue)}
   <span class="zoom-level" id="zoom-level-label">100%</span>
   <button type="button" id="zoom-in-btn" aria-label="Vergrößern">+</button>
 </div>
+
+<button type="button" class="cheat-pause-btn hidden" id="pause-timer-btn" aria-label="Timer pausieren"><svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg></button>
 
 <script>
 (function(){
@@ -1295,6 +1307,9 @@ let session = null; // {questions:[...], answers:Map, bookmarks:Set, timeMinutes
 let currentIndex = 0;
 let timerHandle = null;
 let secondsLeft = 0;
+let timerPaused = false;
+const PAUSE_ICON_SVG = '<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg>';
+const PLAY_ICON_SVG = '<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M4 2.5v11l9-5.5-9-5.5z"/></svg>';
 
 document.getElementById('start-btn').addEventListener('click', startExam);
 
@@ -1400,14 +1415,36 @@ function startExam(){
   };
   currentIndex = 0;
   secondsLeft = timeMinutes * 60;
+  timerPaused = false;
 
   document.getElementById('screen-start').classList.add('hidden');
   document.getElementById('screen-exam').classList.remove('hidden');
+
+  const cheatModeOn = document.getElementById('cfg-cheat-mode')?.checked;
+  const pauseBtn = document.getElementById('pause-timer-btn');
+  pauseBtn.classList.toggle('hidden', !cheatModeOn);
+  pauseBtn.classList.remove('paused');
+  pauseBtn.innerHTML = PAUSE_ICON_SVG;
+  pauseBtn.setAttribute('aria-label', 'Timer pausieren');
 
   renderOverview();
   renderQuestion();
   startTimer();
 }
+
+function toggleTimerPause(){
+  const pauseBtn = document.getElementById('pause-timer-btn');
+  timerPaused = !timerPaused;
+  if(timerPaused){
+    clearInterval(timerHandle);
+  } else {
+    startTimer();
+  }
+  pauseBtn.classList.toggle('paused', timerPaused);
+  pauseBtn.innerHTML = timerPaused ? PLAY_ICON_SVG : PAUSE_ICON_SVG;
+  pauseBtn.setAttribute('aria-label', timerPaused ? 'Timer fortsetzen' : 'Timer pausieren');
+}
+document.getElementById('pause-timer-btn').addEventListener('click', toggleTimerPause);
 
 function startTimer(){
   clearInterval(timerHandle);
@@ -1554,6 +1591,8 @@ const readerOverlay = document.getElementById('reader-overlay');
 const readerPlayBtn = document.getElementById('reader-play-btn');
 const readerSpeedSelect = document.getElementById('reader-speed');
 let readerVoice = null;
+const READER_ICON_IDLE_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3z"/><path d="M16.5 12c0-1.77-.77-3.29-2-4.28v8.56c1.23-.99 2-2.51 2-4.28z"/><path d="M14.5 3.23v2.06c2.89 1.04 5 3.77 5 6.71s-2.11 5.67-5 6.71v2.06c4.01-1.09 7-4.9 7-9.09s-2.99-7.83-7-8.45z"/></svg>';
+const READER_ICON_READING_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3z"/><rect x="15.5" y="8" width="2.3" height="8" rx="1"/><rect x="19.2" y="8" width="2.3" height="8" rx="1"/></svg>';
 
 function readerPickVoice(){
   const voices = speechSynthesis.getVoices();
@@ -1569,8 +1608,10 @@ function readerBuildText(q){
 }
 
 function readerSetIcon(playing){
-  readerPlayBtn.textContent = playing ? '⏸' : '▶';
+  readerPlayBtn.classList.toggle('reading', playing);
+  readerPlayBtn.innerHTML = playing ? READER_ICON_READING_SVG : READER_ICON_IDLE_SVG;
   readerPlayBtn.title = playing ? 'Pausieren' : 'Frage vorlesen';
+  readerPlayBtn.setAttribute('aria-label', playing ? 'Pausieren' : 'Frage vorlesen');
 }
 
 function readerStop(){
@@ -1718,14 +1759,19 @@ function cheatResultBody(q){
     : !hasOpenAnswer(q) ? '<div class="rowval cheat-status bad">– Nicht beantwortet</div>' : '';
   // With an AI key configured, grading runs automatically as part of the
   // reveal itself (see wireCheatPanel) — no separate "Mit KI bewerten" button
-  // needed here, only a retry if that attempt failed. Manual self-grading is
-  // the fallback when no key is configured, same as the results page — this
-  // page never offers to set one up, to keep it out of the way here.
+  // needed here on first pass. Once a verdict (success or error) exists,
+  // the same button doubles as a manual re-evaluate action — e.g. after
+  // rephrasing the answer below and wanting a fresh AI pass without leaving
+  // the page. Manual self-grading is the fallback when no key is configured,
+  // same as the results page — this page never offers to set one up, to
+  // keep it out of the way here.
   let actionHtml = '';
   if(getAiKey()){
     if(fb && fb.error){
-      actionHtml = `<button class="ai-grade-btn" id="cheat-ai-btn" style="margin-top:10px">🔁 KI erneut versuchen</button>`;
-    } else if(!(fb && fb.feedback) && hasOpenAnswer(q)){
+      actionHtml = `<button class="btn btn-cheat ai-grade-btn" id="cheat-ai-btn" style="margin-top:10px">🔁 KI erneut versuchen</button>`;
+    } else if(fb && fb.feedback){
+      actionHtml = `<button class="btn btn-cheat ai-grade-btn" id="cheat-ai-btn" style="margin-top:10px">🔁 Neu bewerten (nach Überarbeitung)</button>`;
+    } else if(hasOpenAnswer(q)){
       actionHtml = '<div class="rowval" style="margin-top:8px;color:var(--muted)">⏳ Wird von der KI bewertet…</div>';
     }
   } else {
@@ -1938,7 +1984,7 @@ function renderQuestion(){
   const q = session.questions[currentIndex];
   const total = session.questions.length;
   session.viewed.add(q.id);
-  document.getElementById('nav-center').textContent = `Frage ${currentIndex+1} / ${total}`;
+  document.getElementById('nav-center').textContent = `${currentIndex+1} / ${total}`;
   document.getElementById('prev-btn').disabled = currentIndex === 0;
   document.getElementById('bookmark-btn').classList.toggle('active', session.bookmarks.has(q.id));
 
@@ -2248,7 +2294,7 @@ function renderResultsHtml(){
           <button class="btn btn-primary" id="results-ai-key-save">Speichern &amp; testen</button>
           <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" class="btn-link" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">API-Key erstellen</a>
         </div>
-        <div class="small-note" id="results-ai-key-status" style="margin-top:0"></div>
+        <div class="small-note" id="results-ai-key-status"></div>
         <div class="small-note">
           Kostenlos in Google AI Studio erstellbar (Google-Konto nötig, keine Zahlungsmethode). Der Key wird ausschließlich lokal in Ihrem
           Browser gespeichert (localStorage) und bei Bewertung direkt von Ihrem Browser an Google gesendet — er
@@ -2289,6 +2335,7 @@ function renderResultsHtml(){
     <button data-f="all">Alle (${session.questions.length})</button>
     <button class="active" data-f="wrong">Falsch</button>
     <button data-f="correct">Richtig</button>
+    <button data-f="pending">Noch auszuwerten (${ungradedOpen})</button>
     <button data-f="mc">Checkbox</button>
     <button data-f="open">Freitext</button>
   </div>`;
@@ -2511,6 +2558,9 @@ function renderReviewList(filter){
     else if(filter==='correct'){
       if(q.type==='mc') show = gradeMC(q) === true;
       else show = effectiveOpenGrade(q) === true;
+    }
+    else if(filter==='pending'){
+      show = q.type==='open' && hasOpenAnswer(q) && session.selfGrade.get(q.id)===undefined;
     }
     if(!show) continue;
     list.appendChild(renderReviewItem(q, i));
