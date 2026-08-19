@@ -259,6 +259,11 @@ input[type=range]{accent-color:var(--blue)}
 .zoom-control button:hover:not(:disabled){background:var(--pm-blue-d)}
 .zoom-control button:disabled{opacity:.35;cursor:default}
 .zoom-control .zoom-level{font-size:11px;font-weight:700;color:var(--navy2);min-width:24px;text-align:center;padding:0 2px}
+.cheat-pause-btn{position:fixed;left:18px;bottom:18px;background:var(--amber);color:#fff;border:none;border-radius:999px;padding:10px 18px;font-size:13px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.22);cursor:pointer;z-index:39;display:flex;align-items:center;gap:6px}
+.cheat-pause-btn:hover{background:var(--amber-d)}
+.cheat-pause-btn.paused{background:var(--amber-d)}
+#screen-exam.hidden ~ #pause-timer-btn{display:none}
+#screen-exam:not(.hidden) ~ #pause-timer-btn{left:268px}
 .modal{background:#fff;border-radius:10px;padding:26px 28px;max-width:420px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3)}
 .modal h3{margin:0 0 10px;font-size:16px}
 .modal p{font-size:13.5px;color:var(--muted);line-height:1.5;margin:0 0 20px}
@@ -319,6 +324,7 @@ input[type=range]{accent-color:var(--blue)}
 @media (max-width: 760px){
   #screen-start{padding-bottom:16px}
   #screen-exam:not(.hidden) ~ #zoom-control{left:18px}
+  #screen-exam:not(.hidden) ~ #pause-timer-btn{left:18px}
   .main-actions-row{flex-direction:column}
   .secondary-actions-row{display:flex;gap:10px}
   .secondary-actions-row .btn{padding:11.5px 8px;font-size:12.5px;white-space:nowrap}
@@ -616,6 +622,8 @@ input[type=range]{accent-color:var(--blue)}
   <span class="zoom-level" id="zoom-level-label">100%</span>
   <button type="button" id="zoom-in-btn" aria-label="Vergrößern">+</button>
 </div>
+
+<button type="button" class="cheat-pause-btn hidden" id="pause-timer-btn" aria-label="Timer pausieren">⏸ Pause</button>
 
 <script>
 (function(){
@@ -1295,6 +1303,7 @@ let session = null; // {questions:[...], answers:Map, bookmarks:Set, timeMinutes
 let currentIndex = 0;
 let timerHandle = null;
 let secondsLeft = 0;
+let timerPaused = false;
 
 document.getElementById('start-btn').addEventListener('click', startExam);
 
@@ -1400,14 +1409,34 @@ function startExam(){
   };
   currentIndex = 0;
   secondsLeft = timeMinutes * 60;
+  timerPaused = false;
 
   document.getElementById('screen-start').classList.add('hidden');
   document.getElementById('screen-exam').classList.remove('hidden');
+
+  const cheatModeOn = document.getElementById('cfg-cheat-mode')?.checked;
+  const pauseBtn = document.getElementById('pause-timer-btn');
+  pauseBtn.classList.toggle('hidden', !cheatModeOn);
+  pauseBtn.classList.remove('paused');
+  pauseBtn.textContent = '⏸ Pause';
 
   renderOverview();
   renderQuestion();
   startTimer();
 }
+
+function toggleTimerPause(){
+  const pauseBtn = document.getElementById('pause-timer-btn');
+  timerPaused = !timerPaused;
+  if(timerPaused){
+    clearInterval(timerHandle);
+  } else {
+    startTimer();
+  }
+  pauseBtn.classList.toggle('paused', timerPaused);
+  pauseBtn.textContent = timerPaused ? '▶ Fortsetzen' : '⏸ Pause';
+}
+document.getElementById('pause-timer-btn').addEventListener('click', toggleTimerPause);
 
 function startTimer(){
   clearInterval(timerHandle);
