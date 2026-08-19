@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SiM-C3RT">
-<title>SiM-C3RT v0.5</title>
+<title>SiM-C3RT v0.8</title>
 <style>
 :root{
   --navy:#152238; --navy2:#1c2f4d; --navy3:#24406b;
@@ -48,9 +48,8 @@ button{font-family:inherit;cursor:pointer}
 .start-header{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;margin-bottom:8px}
 .start-header .brand-row{display:flex;align-items:center;gap:10px;justify-content:center}
 .start-logo{height:162px;width:auto;margin:0}
-.logo-dot{width:14px;height:14px;border-radius:3px;background:var(--green)}
 .version-badge{display:inline-block;font-size:11px;font-weight:700;color:var(--muted);background:#e6e9ee;border-radius:10px;padding:2px 8px;vertical-align:middle;letter-spacing:.2px}
-.topbar .brand .version-badge{background:rgba(13,44,94,.12);color:var(--pm-navy)}
+.topbar .topbar-version{background:rgba(13,44,94,.12);color:var(--pm-navy)}
 .start-header .sub{color:var(--muted);font-size:14px;margin:2px 0 0;line-height:1.6;font-weight:400}
 .start-header .sub .brand-name{color:var(--navy2);font-size:16px;font-weight:700}
 .start-header .sub .disclaimer{opacity:.67}
@@ -68,7 +67,6 @@ button{font-family:inherit;cursor:pointer}
 .config-section-count{font-size:11.5px;color:var(--muted);font-weight:600}
 .config-section-count.non-default{color:var(--amber-d);background:#fff0d9;padding:2px 8px;border-radius:10px}
 .config-section-body{padding:16px}
-.config-divider{border:none;border-top:1px solid var(--grey);margin:0 0 14px}
 .card h2{font-size:15px;margin:0 0 12px;color:var(--navy2)}
 .field-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px}
 .field{flex:1;min-width:180px}
@@ -113,13 +111,16 @@ button{font-family:inherit;cursor:pointer}
 .ke-filter-row .ke-action-blue:hover{background:rgba(29,78,216,.15)}
 .ke-filter-row .ke-action-gray{background:#e6e9ee;color:var(--navy2);border-color:#d5dae2}
 .ke-filter-row .ke-action-gray:hover{background:#d9dee6}
+.config-toggles .btn-primary{background:rgba(47,158,91,.16);color:var(--green-d);border:1px solid rgba(47,158,91,.32)}
+.config-toggles .btn-primary:hover{background:rgba(47,158,91,.26)}
+.config-toggles .btn-secondary{border:1px solid #d5dae2}
 .small-note{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5}
 .small-note.status-ok{color:var(--green-d);font-weight:600}
 .small-note.status-bad{color:var(--danger);font-weight:600}
 .summary-line{font-size:13px;color:var(--muted);margin-bottom:10px}
 .summary-line.status-bad{color:var(--danger);font-weight:600}
 .badge-note{font-size:11px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0}
-.warning-note{background:#fff6e9;border:1px solid var(--amber);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--amber-d);line-height:1.5;margin-top:12px}
+.warning-note{background:rgba(255,215,94,.18);border:1px solid var(--yellow);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--yellow-d);line-height:1.5;margin-top:12px}
 .rules-card{background:#eaf1ff;border:1px solid #b9d0f5;border-radius:10px;padding:20px 22px;margin-top:18px}
 .rules-header{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;flex-wrap:wrap}
 .rules-header h3{margin:0;font-size:15px;color:var(--blue-d)}
@@ -142,8 +143,8 @@ input[type=range]{accent-color:var(--blue)}
    navy sidebar / light-blue header / medium-blue accent palette) ---------- */
 #screen-exam{display:flex;flex-direction:column;height:100vh}
 .topbar{background:linear-gradient(135deg, var(--pm-header-a), var(--pm-header-b));color:var(--pm-navy);display:flex;align-items:center;padding:10px 18px;flex:0 0 auto;position:relative}
-.topbar .brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
-.topbar .brand .logo-dot{background:var(--green)}
+.topbar .brand{font-weight:700;font-size:15px}
+.topbar .topbar-version{margin-right:10px}
 .topbar .timer{position:absolute;left:50%;transform:translateX(-50%);font-variant-numeric:tabular-nums;font-weight:700;font-size:15px;background:rgba(13,44,94,.12);padding:6px 12px;border-radius:6px}
 .topbar .timer.low{background:var(--danger);color:#fff}
 .topbar .end-btn{margin-left:auto;background:var(--danger);border:none;color:#fff;padding:7px 14px;border-radius:6px;font-size:13px;font-weight:700}
@@ -193,6 +194,14 @@ input[type=range]{accent-color:var(--blue)}
 .cheat-panel.slim:hover{opacity:.85}
 .cheat-panel.slim .cheat-label{white-space:nowrap}
 .cheat-panel.slim #cheat-result{margin-top:0;font-size:11.5px;font-weight:700;color:var(--amber-d);text-transform:uppercase;letter-spacing:.3px}
+/* Mobile merged button/result slot: matches a nav button's size exactly
+   while its content is short enough to fit one line, so it doesn't stand
+   out from Vorherige/Nächste. Only grows to the full readable panel
+   (left-aligned, normal padding) once the content actually needs to wrap —
+   Freitext results almost always will, short MC statuses almost never. */
+.cheat-panel.cheat-compact{padding:10px 18px;display:flex;align-items:center;justify-content:center}
+.cheat-panel.cheat-compact #cheat-result{margin-top:0;text-align:center;font-size:14px;line-height:normal}
+.cheat-panel.cheat-compact .rowval, .cheat-panel.cheat-compact .cheat-status{margin-top:0;line-height:normal;font-size:14px}
 .cheat-panel .rowlbl{font-size:11.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-top:8px}
 .cheat-panel .rowval{font-size:13.5px;line-height:1.5;white-space:pre-wrap;margin-top:2px}
 .cheat-panel .cheat-status{font-weight:700;font-size:14.5px}
@@ -232,11 +241,24 @@ input[type=range]{accent-color:var(--blue)}
 
 /* ---------- Modal ---------- */
 .modal-overlay{position:fixed;inset:0;background:rgba(10,16,30,.55);display:flex;align-items:center;justify-content:center;z-index:50}
-.reader-overlay{position:fixed;right:18px;bottom:18px;background:#fff;border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.22);display:flex;align-items:center;gap:8px;padding:6px 14px 6px 6px;z-index:41}
+.reader-overlay{position:fixed;right:18px;bottom:18px;background:#fff;border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.22);display:flex;align-items:center;gap:8px;padding:6px 14px 6px 6px;z-index:39}
 .reader-overlay.reader-hidden{display:none}
 .reader-play-btn{background:var(--pm-blue);color:#fff;border:none;width:36px;height:36px;border-radius:50%;font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
 .reader-play-btn:hover{background:var(--pm-blue-d)}
 .reader-speed{border:1px solid var(--grey);border-radius:6px;padding:5px 6px;font-size:12px;background:#fff;color:var(--navy2);cursor:pointer}
+.zoom-control{position:fixed;left:18px;bottom:18px;background:#fff;border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.22);display:flex;align-items:center;gap:4px;padding:4px;z-index:39}
+/* Only useful while actually reading a question — hidden on the config and
+   results screens. The exam sidebar (250px, in-flow on desktop) would
+   otherwise sit under this control's default left offset too, so push it
+   clear of the sidebar while the exam screen is showing it. On mobile the
+   sidebar is an off-canvas drawer, not in-flow, so no offset is needed
+   there — just the lower z-index above so it doesn't sit over an open one. */
+#screen-exam.hidden ~ #zoom-control{display:none}
+#screen-exam:not(.hidden) ~ #zoom-control{left:268px}
+.zoom-control button{background:var(--pm-blue);color:#fff;border:none;width:19px;height:19px;border-radius:50%;font-size:12px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
+.zoom-control button:hover:not(:disabled){background:var(--pm-blue-d)}
+.zoom-control button:disabled{opacity:.35;cursor:default}
+.zoom-control .zoom-level{font-size:11px;font-weight:700;color:var(--navy2);min-width:24px;text-align:center;padding:0 2px}
 .modal{background:#fff;border-radius:10px;padding:26px 28px;max-width:420px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3)}
 .modal h3{margin:0 0 10px;font-size:16px}
 .modal p{font-size:13.5px;color:var(--muted);line-height:1.5;margin:0 0 20px}
@@ -296,14 +318,15 @@ input[type=range]{accent-color:var(--blue)}
    slide-in drawer, and tighten up spacing generally ---------- */
 @media (max-width: 760px){
   #screen-start{padding-bottom:16px}
+  #screen-exam:not(.hidden) ~ #zoom-control{left:18px}
   .main-actions-row{flex-direction:column}
   .secondary-actions-row{display:flex;gap:10px}
   .secondary-actions-row .btn{padding:11.5px 8px;font-size:12.5px;white-space:nowrap}
   .field{min-width:120px}
   .hamburger-btn{display:flex}
   .topbar{padding:8px 10px;gap:6px}
-  .topbar .brand{font-size:12.5px;gap:5px}
-  .topbar .brand .version-badge{display:none}
+  .topbar .brand{font-size:12.5px}
+  .topbar .topbar-version{display:none}
   .topbar .timer{font-size:12.5px;padding:5px 8px}
   .topbar .end-btn{padding:6px 9px;font-size:11px;white-space:nowrap}
 
@@ -366,11 +389,11 @@ input[type=range]{accent-color:var(--blue)}
     <h2>Prüfungssimulation konfigurieren</h2>
     <div class="field-row">
       <div class="field">
-        <label>Fragenanzahl</label>
+        <label>Fragen</label>
         <input type="number" id="cfg-count" min="1" max="500" value="61">
       </div>
       <div class="field">
-        <label>Bearbeitungszeit (Minuten)</label>
+        <label>Dauer (min)</label>
         <input type="number" id="cfg-time" min="5" max="240" value="90">
       </div>
     </div>
@@ -380,11 +403,6 @@ input[type=range]{accent-color:var(--blue)}
       <details class="config-section" id="ai-key-card">
         <summary><span>Ergebnisauswertung</span><span class="config-section-count" id="ai-toggle-badge"></span></summary>
         <div class="config-section-body">
-          <label class="ke-item" style="margin-top:0;margin-bottom:14px">
-            <input type="checkbox" id="cfg-cheat-mode">
-            <span>Cheat-Modus aktivieren (nur zum Üben gedacht)<br><span class="badge-note">Zeigt Musterantwort/richtige Antwort direkt auf jeder Fragenseite, statt erst im Ergebnis.</span></span>
-          </label>
-          <hr class="config-divider">
           <div class="field">
             <label>Kostenlose KI-Auswertungen aktivieren</label>
             <input type="password" id="cfg-ai-key" placeholder="Google Gemini API-Key hier einfügen">
@@ -396,11 +414,16 @@ input[type=range]{accent-color:var(--blue)}
           </div>
           <div class="small-note" id="ai-key-status" style="margin-top:0"></div>
           <div class="small-note">
-            Kostenlos auf <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener">aistudio.google.com/api-keys</a>
-            erstellbar (Google-Konto nötig, keine Zahlungsmethode). Der Key wird ausschließlich lokal in Ihrem
+            Kostenlos in Google AI Studio erstellbar (Google-Konto nötig, keine Zahlungsmethode). Der Key wird ausschließlich lokal in Ihrem
             Browser gespeichert (localStorage) und bei Bewertung direkt von Ihrem Browser an Google gesendet — er
             läuft über keinen Server dieser Anwendung. Ohne Key müssen die offenen Fragen zur Musterlösung selbst
             abgeglichen und abgeschätzt werden!
+          </div>
+          <div class="cheat-panel" style="margin-bottom:0">
+            <label class="ke-item" style="margin-top:0">
+              <input type="checkbox" id="cfg-cheat-mode">
+              <span>Zusätzlich Cheat-Modus aktivieren (nur zum Üben gedacht)<br><span class="badge-note">Zeigt Musterantwort/richtige Antwort direkt auf jeder Fragenseite, statt erst im Ergebnis.</span></span>
+            </label>
           </div>
         </div>
       </details>
@@ -449,20 +472,22 @@ input[type=range]{accent-color:var(--blue)}
       </details>
 
       <details class="config-section">
-        <summary><span>Fragenkatalog <span class="badge-note hidden" id="sheet-stand-note">(Stand: 13.08.2026)</span></span><span class="config-section-count" id="sheet-toggle-badge"></span></summary>
+        <summary><span>Fragenkatalogquelle</span><span class="config-section-count" id="sheet-toggle-badge"></span></summary>
         <div class="config-section-body">
           <div class="field">
-            <label>Google-Sheet-URL <span class="badge-note">(es wird nur das erste Tabellenblatt verwendet)</span></label>
+            <label>Google-Sheet-URL <span class="badge-note hidden" id="sheet-stand-note">(Stand: 13.08.2026)</span></label>
             <input type="text" id="cfg-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
           </div>
-          <div class="toolbar-row">
-            <button class="btn btn-secondary" id="sheet-reload-btn">Fragen neu laden</button>
+          <div class="toolbar-row fill-row">
+            <button class="btn btn-primary" id="sheet-reload-btn">Fragen laden</button>
+            <button class="btn btn-link" id="sheet-open-btn" disabled>Katalog öffnen</button>
+            <a href="https://docs.google.com/spreadsheets/d/1bpyb94Ys9gumoJ3QtW8ZpQM-ebY1gGtEKNu4qi6AjEo/copy" target="_blank" rel="noopener" class="btn btn-secondary" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">Vorlage erstellen</a>
           </div>
           <div class="small-note" id="sheet-status">Lade Fragen…</div>
           <div class="small-note">
             Fragen werden bei jedem Seitenaufruf direkt aus diesem Sheet geladen (keine im Simulator gespeicherte Kopie).
             Das Sheet muss auf "Jeder mit dem Link kann ansehen" freigegeben sein. Erwartete Spalten: Kompetenzelement,
-            Frage, Antwortmöglichkeit, Ergänzende Informationen. Eigene Fragen erstellen? <a href="https://docs.google.com/spreadsheets/d/1bpyb94Ys9gumoJ3QtW8ZpQM-ebY1gGtEKNu4qi6AjEo/copy" target="_blank" rel="noopener">Eine leere Vorlage als Kopie in Google Drive anlegen ↗</a>.
+            Frage, Antwortmöglichkeit, Ergänzende Informationen.
           </div>
         </div>
       </details>
@@ -513,7 +538,7 @@ input[type=range]{accent-color:var(--blue)}
       </svg>
       <span>mmca101/simc3rt</span>
     </a>
-    <span class="version-badge">v0.5</span>
+    <span class="version-badge">v0.8</span>
   </div>
 </div>
 
@@ -525,12 +550,17 @@ input[type=range]{accent-color:var(--blue)}
         <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
     </button>
-    <div class="brand"><span class="logo-dot"></span> SiM-C3RT <span class="version-badge">v0.5</span></div>
+    <span class="version-badge topbar-version">v0.8</span>
+    <div class="brand">SiM-C3RT</div>
     <div class="timer" id="timer-display">90:00</div>
     <button class="end-btn" id="end-exam-btn">PRÜFUNG BEENDEN</button>
   </div>
   <div class="navbar">
-    <button class="arrow" id="prev-btn">&#8592;</button>
+    <button class="arrow" id="prev-btn" aria-label="Vorherige Frage">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path d="M12.5 4.5 6 10l6.5 5.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
     <div class="navcenter" id="nav-center">Frage 1</div>
     <button class="bookmark-btn" id="bookmark-btn" title="Mit Lesezeichen markieren">
       <svg id="bookmark-icon" width="15" height="17" viewBox="0 0 15 17" xmlns="http://www.w3.org/2000/svg">
@@ -538,7 +568,11 @@ input[type=range]{accent-color:var(--blue)}
       </svg>
       <span>Lesezeichen</span>
     </button>
-    <button class="arrow" id="next-btn">&#8594;</button>
+    <button class="arrow" id="next-btn" aria-label="Nächste Frage">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path d="M7.5 4.5 14 10l-6.5 5.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
   </div>
   <div class="body-wrap">
     <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
@@ -576,6 +610,12 @@ input[type=range]{accent-color:var(--blue)}
 
 <!-- ================= RESULTS SCREEN ================= -->
 <div id="screen-results" class="hidden"></div>
+
+<div class="zoom-control hidden" id="zoom-control">
+  <button type="button" id="zoom-out-btn" aria-label="Verkleinern">−</button>
+  <span class="zoom-level" id="zoom-level-label">100%</span>
+  <button type="button" id="zoom-in-btn" aria-label="Vergrößern">+</button>
+</div>
 
 <script>
 (function(){
@@ -1576,6 +1616,34 @@ if(readerSupported){
   });
 }
 
+// ---------- Whole-app zoom (floating +/- control, bottom-left) ----------
+// Hidden for now (felt more disruptive than helpful) — code kept intact
+// in case it's revisited. Deliberately not persisted: every reload starts
+// back at the default 100%, never remembers a prior session's level.
+// A functional 1-9 scale in 20% steps (1=60% ... 3=100% default ... 9=220%),
+// applied via the CSS zoom property on <html> so layout reflows properly
+// (unlike transform:scale, which would just crop/overlap instead of resizing).
+const ZOOM_MIN = 1, ZOOM_MAX = 9, ZOOM_DEFAULT = 3;
+function zoomPercentFor(level){ return level * 20 + 40; }
+let zoomLevel = ZOOM_DEFAULT;
+const zoomOutBtn = document.getElementById('zoom-out-btn');
+const zoomInBtn = document.getElementById('zoom-in-btn');
+const zoomLevelLabel = document.getElementById('zoom-level-label');
+function applyZoom(){
+  const pct = zoomPercentFor(zoomLevel);
+  document.documentElement.style.zoom = pct / 100;
+  zoomLevelLabel.textContent = pct + '%';
+  zoomOutBtn.disabled = zoomLevel <= ZOOM_MIN;
+  zoomInBtn.disabled = zoomLevel >= ZOOM_MAX;
+}
+zoomOutBtn.addEventListener('click', ()=>{
+  if(zoomLevel > ZOOM_MIN){ zoomLevel--; applyZoom(); }
+});
+zoomInBtn.addEventListener('click', ()=>{
+  if(zoomLevel < ZOOM_MAX){ zoomLevel++; applyZoom(); }
+});
+applyZoom();
+
 // ---------- Cheat-Modus: shows the correct answer / Musterantwort (and an
 // on-demand AI evaluation for open questions) directly on each question's
 // page during the exam, instead of only in the results review afterwards.
@@ -1695,6 +1763,32 @@ function renderCheatRevealBtn(q){
   if(session.cheatRevealed.has(q.id)) return '';
   return `<button class="btn btn-cheat" id="cheat-reveal-btn">Ergebnis anzeigen</button>`;
 }
+function isMobileCheatLayout(){
+  return window.matchMedia('(max-width: 760px)').matches;
+}
+// Measures whatever's currently in #cheat-result and decides whether the
+// mobile slot should stay button-sized/centered (content fits one line) or
+// expand to the full readable panel (left-aligned, once it doesn't).
+function applyCheatMobileSizing(){
+  if(!isMobileCheatLayout()) return;
+  const panel = document.getElementById('cheat-panel');
+  const resultEl = document.getElementById('cheat-result');
+  if(!panel || !resultEl) return;
+  const singleLine = resultEl.scrollHeight <= 28; // ~one line at 14px
+  panel.classList.toggle('cheat-compact', singleLine);
+}
+// Mobile: no separate banner below the nav — the reveal button IS the
+// result container, sitting in its own full-width row above Vorherige/
+// Nächste. Pre-reveal it's just the button; on click it's replaced in
+// place by the same result box the desktop panel shows.
+function renderCheatMobileSlot(q){
+  if(!session.cheatRevealed.has(q.id)){
+    return `<button class="btn btn-cheat" id="cheat-reveal-btn" style="width:100%;margin-top:10px">Ergebnis anzeigen</button>`;
+  }
+  return `<div class="cheat-panel" id="cheat-panel" style="margin-top:10px">
+    <div id="cheat-result" aria-live="polite">${cheatResultBody(q)}</div>
+  </div>`;
+}
 // Only counts a question as "cheat-evaluated" once its result has actually
 // been revealed — an MC question resolves as soon as it's answered, a
 // Freitext one only once AI or manual self-grading has run.
@@ -1704,6 +1798,21 @@ function cheatEvalResult(q){
   if(q.type === 'mc') return gradeMC(q);
   const sg = session.selfGrade.get(q.id);
   return typeof sg === 'boolean' ? sg : null;
+}
+// Re-renders whichever cheat slot is currently in the DOM (mobile's merged
+// button/result box, or desktop's panel-below-the-nav) after something
+// async (AI grading, self-grade click) changes what it should show.
+function reRenderCheatSlot(q){
+  const panel = document.getElementById('cheat-panel');
+  if(!panel) return;
+  if(isMobileCheatLayout()){
+    panel.outerHTML = renderCheatMobileSlot(q);
+    wireCheatMobileSlot(q);
+    applyCheatMobileSizing();
+  } else {
+    panel.outerHTML = renderCheatPanel(q);
+    wireCheatPanel(q);
+  }
 }
 function wireCheatAiBtn(q){
   const cheatAiBtn = document.getElementById('cheat-ai-btn');
@@ -1715,8 +1824,7 @@ function wireCheatAiBtn(q){
       cheatAiBtn.textContent = 'Wird bewertet…';
       await runAiGradeQuestion(mySession, q);
       if(session !== mySession) return; // a new exam was started meanwhile
-      const panel = document.getElementById('cheat-panel');
-      if(panel){ panel.outerHTML = renderCheatPanel(q); wireCheatPanel(q); }
+      reRenderCheatSlot(q);
       refreshCircleStates();
     });
   }
@@ -1725,8 +1833,7 @@ function wireCheatSelfGrade(q){
   document.querySelectorAll('#cheat-self-grade-btns button[data-g]').forEach(b=>{
     b.addEventListener('click', ()=>{
       session.selfGrade.set(q.id, b.dataset.g === 'true');
-      const panel = document.getElementById('cheat-panel');
-      if(panel){ panel.outerHTML = renderCheatPanel(q); wireCheatPanel(q); }
+      reRenderCheatSlot(q);
       refreshCircleStates();
     });
   });
@@ -1742,8 +1849,7 @@ function maybeAutoGradeCheat(q){
   const mySession = session;
   runAiGradeQuestion(mySession, q).then(()=>{
     if(session !== mySession) return; // a new exam was started meanwhile
-    const panel = document.getElementById('cheat-panel');
-    if(panel){ panel.outerHTML = renderCheatPanel(q); wireCheatPanel(q); }
+    reRenderCheatSlot(q);
     refreshCircleStates();
   });
 }
@@ -1783,6 +1889,47 @@ function wireCheatPanel(q){
       triggerCheatReformat(q);
       maybeAutoGradeCheat(q);
     }
+  }
+}
+// Mobile counterpart to wireCheatPanel() — the reveal button IS the result
+// container here, so the click handler replaces it in place with the panel
+// markup instead of mutating an already-present #cheat-result.
+function wireCheatMobileSlot(q){
+  const revealBtn = document.getElementById('cheat-reveal-btn');
+  if(revealBtn){
+    revealBtn.addEventListener('click', ()=>{
+      const mySession = session;
+      session.cheatRevealed.add(q.id);
+      if(q.type === 'mc') applyCheatMcColoring(q);
+      revealBtn.outerHTML = `<div class="cheat-panel" id="cheat-panel" style="margin-top:10px">
+        <div id="cheat-result" aria-live="polite">Ergebnis wird geladen…</div>
+      </div>`;
+      applyCheatMobileSizing();
+      refreshCircleStates();
+      setTimeout(()=>{
+        if(session !== mySession) return; // a new exam was started meanwhile
+        const resultEl = document.getElementById('cheat-result');
+        if(!resultEl) return; // question changed meanwhile
+        resultEl.innerHTML = cheatResultBody(q);
+        applyCheatMobileSizing();
+        wireCheatAiBtn(q);
+        wireCheatSelfGrade(q);
+        triggerCheatReformat(q);
+        refreshCircleStates();
+        maybeAutoGradeCheat(q);
+      }, 2000);
+    });
+  }
+  wireCheatAiBtn(q);
+  wireCheatSelfGrade(q);
+  if(session.cheatRevealed.has(q.id)){
+    if(q.type === 'mc'){
+      applyCheatMcColoring(q);
+    } else {
+      triggerCheatReformat(q);
+      maybeAutoGradeCheat(q);
+    }
+    applyCheatMobileSizing();
   }
 }
 
@@ -1836,18 +1983,29 @@ function renderQuestion(){
   }
 
   const cheatModeOn = document.getElementById('cfg-cheat-mode')?.checked;
-  const cheatBtnHtml = cheatModeOn ? renderCheatRevealBtn(q) : '';
+  const mobileCheat = cheatModeOn && isMobileCheatLayout();
 
-  html += `<div class="bottom-nav${cheatBtnHtml ? ' has-cheat' : ''}">
-    <button class="btn btn-secondary" id="bottom-prev">&#8592; Vorherige Frage</button>
-    ${cheatBtnHtml}
-    <button class="btn btn-primary" id="bottom-next">${currentIndex===total-1 ? 'Zum Abschluss' : 'Nächste Frage →'}</button>
-  </div>`;
-
-  // Lowest-priority element on the page — sits below the nav so it never
-  // competes visually with the question/answer/nav that come first.
-  if(cheatModeOn){
-    html += renderCheatPanel(q);
+  if(mobileCheat){
+    // Mobile: the reveal button (and, once clicked, the result it becomes)
+    // sits in its own full-width row above Vorherige/Nächste — no separate
+    // banner below the nav.
+    html += renderCheatMobileSlot(q);
+    html += `<div class="bottom-nav">
+      <button class="btn btn-secondary" id="bottom-prev">&#8592; Vorherige Frage</button>
+      <button class="btn btn-primary" id="bottom-next">${currentIndex===total-1 ? 'Zum Abschluss' : 'Nächste Frage →'}</button>
+    </div>`;
+  } else {
+    const cheatBtnHtml = cheatModeOn ? renderCheatRevealBtn(q) : '';
+    html += `<div class="bottom-nav${cheatBtnHtml ? ' has-cheat' : ''}">
+      <button class="btn btn-secondary" id="bottom-prev">&#8592; Vorherige Frage</button>
+      ${cheatBtnHtml}
+      <button class="btn btn-primary" id="bottom-next">${currentIndex===total-1 ? 'Zum Abschluss' : 'Nächste Frage →'}</button>
+    </div>`;
+    // Lowest-priority element on the page — sits below the nav so it never
+    // competes visually with the question/answer/nav that come first.
+    if(cheatModeOn){
+      html += renderCheatPanel(q);
+    }
   }
 
   wa.innerHTML = html;
@@ -1888,7 +2046,11 @@ function renderQuestion(){
   document.getElementById('bottom-prev').addEventListener('click', goPrev);
   document.getElementById('bottom-next').addEventListener('click', goNext);
 
-  wireCheatPanel(q);
+  if(mobileCheat){
+    wireCheatMobileSlot(q);
+  } else {
+    wireCheatPanel(q);
+  }
   refreshCircleStates();
 }
 
@@ -2088,8 +2250,7 @@ function renderResultsHtml(){
         </div>
         <div class="small-note" id="results-ai-key-status" style="margin-top:0"></div>
         <div class="small-note">
-          Kostenlos auf <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener">aistudio.google.com/api-keys</a>
-          erstellbar (Google-Konto nötig, keine Zahlungsmethode). Der Key wird ausschließlich lokal in Ihrem
+          Kostenlos in Google AI Studio erstellbar (Google-Konto nötig, keine Zahlungsmethode). Der Key wird ausschließlich lokal in Ihrem
           Browser gespeichert (localStorage) und bei Bewertung direkt von Ihrem Browser an Google gesendet — er
           läuft über keinen Server dieser Anwendung. Ohne Key müssen die offenen Fragen zur Musterlösung selbst
           abgeglichen und abgeschätzt werden!
@@ -2692,6 +2853,16 @@ async function loadQuestions(){
 }
 sheetReloadBtn.addEventListener('click', loadQuestions);
 
+const sheetOpenBtn = document.getElementById('sheet-open-btn');
+function updateSheetOpenBtnState(){
+  sheetOpenBtn.disabled = !extractSheetId(sheetUrlInput.value);
+}
+sheetUrlInput.addEventListener('input', updateSheetOpenBtnState);
+sheetOpenBtn.addEventListener('click', ()=>{
+  const id = extractSheetId(sheetUrlInput.value);
+  if(id) window.open(`https://docs.google.com/spreadsheets/d/${id}/edit`, '_blank', 'noopener');
+});
+
 // Deep-link a question sheet via the page URL, a few ways:
 //   https://sim-c3rt.de/?sheet=ID                                     (canonical — what updateShareableUrl() writes)
 //   https://sim-c3rt.de/?sheet=https://docs.google.com/spreadsheets/d/ID/edit
@@ -2725,6 +2896,7 @@ if(injectedSheetUrl){
   try{ lastSheetUrl = localStorage.getItem(SHEET_URL_STORAGE); } catch(e){ /* storage unavailable */ }
   if(lastSheetUrl) sheetUrlInput.value = lastSheetUrl;
 }
+updateSheetOpenBtnState();
 
 loadQuestions();
 
