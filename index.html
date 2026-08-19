@@ -432,7 +432,7 @@ input[type=range]{accent-color:var(--blue)}
           <div class="cheat-panel" style="margin-bottom:0">
             <label class="ke-item" style="margin-top:0">
               <input type="checkbox" id="cfg-cheat-mode">
-              <span>Zusätzlich Cheat-Modus aktivieren (nur zum Üben gedacht)<br><span class="badge-note">Zeigt Musterantwort/richtige Antwort direkt auf jeder Fragenseite, statt erst im Ergebnis. Blendet außerdem eine Pause-Schaltfläche unten links ein, mit der sich der Timer während der Prüfung anhalten und fortsetzen lässt.</span></span>
+              <span>Zusätzlich Übungs-Modus aktivieren<br><span class="badge-note">Zeigt Musterantwort/richtige Antwort direkt auf jeder Fragenseite, statt erst im Ergebnis. Blendet außerdem eine Pause-Schaltfläche unten links ein, mit der sich der Timer während der Prüfung anhalten und fortsetzen lässt.</span></span>
             </label>
           </div>
         </div>
@@ -1797,7 +1797,7 @@ function renderCheatPanel(q){
   const revealed = session.cheatRevealed.has(q.id);
   const body = revealed ? cheatResultBody(q) : 'aktiviert';
   return `<div class="cheat-panel${revealed ? '' : ' slim'}" id="cheat-panel">
-    <div class="cheat-label">🔓 Cheat-Modus</div>
+    <div class="cheat-label">🔓 Übungs-Modus</div>
     <div id="cheat-result" aria-live="polite">${body}</div>
   </div>`;
 }
