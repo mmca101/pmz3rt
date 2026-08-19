@@ -81,7 +81,7 @@ button{font-family:inherit;cursor:pointer}
 .ke-weight-control{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);flex:0 0 auto}
 .ke-weight-control input[type=range]{width:90px;vertical-align:middle}
 .ke-weight-value{font-weight:700;color:var(--navy2);min-width:18px;display:inline-block;text-align:right}
-.toolbar-row{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap}
+.toolbar-row{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
 .main-actions-row .btn{flex:1;text-align:center}
 /* Desktop: "unwrap" this grouping div entirely so Regeln/Standard laden
    become direct flex siblings of Simulation starten again — the original
@@ -421,7 +421,7 @@ input[type=range]{accent-color:var(--blue)}
             <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" class="btn-link" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">API-Key erstellen</a>
             <button class="btn btn-secondary" id="ai-key-clear">Entfernen</button>
           </div>
-          <div class="small-note" id="ai-key-status" style="margin-top:0"></div>
+          <div class="small-note" id="ai-key-status"></div>
           <div class="small-note">
             Kostenlos in Google AI Studio erstellbar (Google-Konto nötig, keine Zahlungsmethode). Der Key wird ausschließlich lokal in Ihrem
             Browser gespeichert (localStorage) und bei Bewertung direkt von Ihrem Browser an Google gesendet — er
@@ -431,7 +431,7 @@ input[type=range]{accent-color:var(--blue)}
           <div class="cheat-panel" style="margin-bottom:0">
             <label class="ke-item" style="margin-top:0">
               <input type="checkbox" id="cfg-cheat-mode">
-              <span>Zusätzlich Cheat-Modus aktivieren (nur zum Üben gedacht)<br><span class="badge-note">Zeigt Musterantwort/richtige Antwort direkt auf jeder Fragenseite, statt erst im Ergebnis.</span></span>
+              <span>Zusätzlich Cheat-Modus aktivieren (nur zum Üben gedacht)<br><span class="badge-note">Zeigt Musterantwort/richtige Antwort direkt auf jeder Fragenseite, statt erst im Ergebnis. Blendet außerdem eine Pause-Schaltfläche unten links ein, mit der sich der Timer während der Prüfung anhalten und fortsetzen lässt.</span></span>
             </label>
           </div>
         </div>
@@ -2288,7 +2288,7 @@ function renderResultsHtml(){
           <button class="btn btn-primary" id="results-ai-key-save">Speichern &amp; testen</button>
           <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" class="btn-link" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">API-Key erstellen</a>
         </div>
-        <div class="small-note" id="results-ai-key-status" style="margin-top:0"></div>
+        <div class="small-note" id="results-ai-key-status"></div>
         <div class="small-note">
           Kostenlos in Google AI Studio erstellbar (Google-Konto nötig, keine Zahlungsmethode). Der Key wird ausschließlich lokal in Ihrem
           Browser gespeichert (localStorage) und bei Bewertung direkt von Ihrem Browser an Google gesendet — er
@@ -2329,6 +2329,7 @@ function renderResultsHtml(){
     <button data-f="all">Alle (${session.questions.length})</button>
     <button class="active" data-f="wrong">Falsch</button>
     <button data-f="correct">Richtig</button>
+    <button data-f="pending">Noch auszuwerten (${ungradedOpen})</button>
     <button data-f="mc">Checkbox</button>
     <button data-f="open">Freitext</button>
   </div>`;
@@ -2551,6 +2552,9 @@ function renderReviewList(filter){
     else if(filter==='correct'){
       if(q.type==='mc') show = gradeMC(q) === true;
       else show = effectiveOpenGrade(q) === true;
+    }
+    else if(filter==='pending'){
+      show = q.type==='open' && hasOpenAnswer(q) && session.selfGrade.get(q.id)===undefined;
     }
     if(!show) continue;
     list.appendChild(renderReviewItem(q, i));
