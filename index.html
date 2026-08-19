@@ -1204,7 +1204,7 @@ function updateSummary(){
   summaryEl.classList.toggle('hidden', !hasShortfall);
   summaryEl.classList.toggle('status-bad', hasShortfall);
   const keBadge = document.getElementById('ke-toggle-badge');
-  if(keBadge) keBadge.textContent = KE_LIST.length === 0 ? '(Keine Quelle gefunden)' : `${keys.length}/${KE_LIST.length} ausgewählt`;
+  if(keBadge) keBadge.textContent = KE_LIST.length === 0 ? 'Keine Quelle' : `${keys.length}/${KE_LIST.length} ausgewählt`;
   // No point showing the selection filters/grid when there's nothing loaded
   // for them to act on — that reads as a broken/dead feature rather than an
   // empty one.
