@@ -400,12 +400,6 @@ input[type=range]{accent-color:var(--blue)}
       <details class="config-section" id="ai-key-card">
         <summary><span>Ergebnisauswertung</span><span class="config-section-count" id="ai-toggle-badge"></span></summary>
         <div class="config-section-body">
-          <div class="cheat-panel" style="margin-top:0;margin-bottom:14px">
-            <label class="ke-item" style="margin-top:0">
-              <input type="checkbox" id="cfg-cheat-mode">
-              <span>Cheat-Modus aktivieren (nur zum Üben gedacht)<br><span class="badge-note">Zeigt Musterantwort/richtige Antwort direkt auf jeder Fragenseite, statt erst im Ergebnis.</span></span>
-            </label>
-          </div>
           <div class="field">
             <label>Kostenlose KI-Auswertungen aktivieren</label>
             <input type="password" id="cfg-ai-key" placeholder="Google Gemini API-Key hier einfügen">
@@ -421,6 +415,12 @@ input[type=range]{accent-color:var(--blue)}
             Browser gespeichert (localStorage) und bei Bewertung direkt von Ihrem Browser an Google gesendet — er
             läuft über keinen Server dieser Anwendung. Ohne Key müssen die offenen Fragen zur Musterlösung selbst
             abgeglichen und abgeschätzt werden!
+          </div>
+          <div class="cheat-panel" style="margin-bottom:0">
+            <label class="ke-item" style="margin-top:0">
+              <input type="checkbox" id="cfg-cheat-mode">
+              <span>Zusätzlich Cheat-Modus aktivieren (nur zum Üben gedacht)<br><span class="badge-note">Zeigt Musterantwort/richtige Antwort direkt auf jeder Fragenseite, statt erst im Ergebnis.</span></span>
+            </label>
           </div>
         </div>
       </details>
