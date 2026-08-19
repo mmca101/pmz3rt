@@ -1,4 +1,4 @@
-<img src="sim-cert-basic-logo-cropped.png" width="200" height="200">
+<img src="sim-cert-basic-logo-cropped.png" width="200" height="200"> <img src="icon-512.png" width="100" height="100">&nbsp;&nbsp;&nbsp;<img src="icon-192.png" width="50" height="50">
 
 # SiM-C3RT Prüfungssimulator
 
