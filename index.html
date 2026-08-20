@@ -1302,28 +1302,39 @@ function allocateMcCounts(keys, keCounts, byKe, mcPercent){
 }
 
 // How much Checkbox-content the current Kompetenzelemente selection can
-// actually supply, as a percentage of its whole pool — e.g. a selection
-// whose questions are 90% Freitext can never fill an 80% Checkbox-Anteil
-// slider setting, no matter the Fragenanzahl. Deliberately pool-wide rather
-// than accounting for the per-KE weighted draw (allocateQuestionCounts) —
-// a simple, honest ceiling on what exists beats a tighter but harder-to-
-// explain number that still shifts with every weight tweak.
-function maxFocusPercentFor(keys){
+// actually supply within THIS exam, as a percentage — not of the whole
+// selected pool, but of the Fragenanzahl actually being drawn. Those two
+// can differ hugely: e.g. 41 of 336 pooled questions being Checkbox (12%)
+// says nothing about a 61-question exam, if those 41 sit in KEs weighted
+// or capped to draw far more than 12% of that smaller exam. Mirrors the same
+// per-KE allocation the real exam uses (allocateQuestionCounts), then asks
+// each KE for the most Checkbox content it could possibly contribute to
+// its own already-fixed count — the same bound allocateMcCounts() itself
+// respects, so the slider's ceiling always matches what startExam() can
+// actually deliver.
+function maxFocusPercentFor(keys, totalQuestions){
   if(keys.length === 0) return 100;
-  const keySet = new Set(keys);
-  let mc = 0, total = 0;
+  const keCounts = allocateQuestionCounts(keys, totalQuestions);
+  const byKe = new Map();
   for(const q of ALL_Q){
-    if(!keySet.has(q.keKey)) continue;
-    total++;
-    if(q.type === 'mc') mc++;
+    if(!byKe.has(q.keKey)) byKe.set(q.keKey, []);
+    byKe.get(q.keKey).push(q);
   }
-  return total === 0 ? 100 : Math.floor(mc / total * 100);
+  let realTotal = 0, maxMc = 0;
+  for(const k of keys){
+    const count = keCounts.get(k) || 0;
+    realTotal += count;
+    const mcAvail = (byKe.get(k) || []).filter(q => q.type === 'mc').length;
+    maxMc += Math.min(count, mcAvail);
+  }
+  return realTotal === 0 ? 100 : Math.floor(maxMc / realTotal * 100);
 }
 // Keeps the slider from ever being draggable past what the current
 // selection can supply, and pulls an already-too-high value back down when
 // a KE deselection (or a freshly loaded sheet) lowers the ceiling.
 function applyFocusLimit(keys){
-  const max = maxFocusPercentFor(keys);
+  const totalQuestions = parseInt(document.getElementById('cfg-count').value, 10) || 1;
+  const max = maxFocusPercentFor(keys, totalQuestions);
   // Read the value BEFORE touching .max: browsers auto-clamp a range
   // input's value the instant its max drops below it, so checking
   // afterward would always see the already-clamped (equal) value and skip
@@ -1405,7 +1416,8 @@ function updateFocusLabel(){
   // (see maxFocusPercentFor), and/or the value has drifted from the
   // default that mirrors the real exam's ~19% split. Either on its own
   // is worth surfacing, so the note shows whenever either is true.
-  const max = maxFocusPercentFor(selectedKEKeys());
+  const totalQuestions = parseInt(document.getElementById('cfg-count').value, 10) || 1;
+  const max = maxFocusPercentFor(selectedKEKeys(), totalQuestions);
   const warning = document.getElementById('focus-warning-note');
   if(warning){
     const isDefault = v === FOCUS_DEFAULT;
