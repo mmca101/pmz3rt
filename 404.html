@@ -532,7 +532,7 @@ input[type=range]{accent-color:var(--blue)}
           </div>
           <label class="ke-item" style="margin-top:10px" id="memory-toggle-wrap">
             <input type="checkbox" id="cfg-use-memory" checked disabled>
-            <span>Lerngedächtnis und Fortschritttracking <span class="badge-note">(benötigt ID Spalte in Quelle)</span></span>
+            <span>Lerngedächtnis und Fortschritttracking</span>
           </label>
           <div class="small-note hidden" id="memory-unavailable-note">
             Diese Fragenquelle hat keine eindeutige ID je Frage — Lerngedächtnis ist erst mit einer "ID"-Spalte verfügbar (siehe oben).
@@ -1143,7 +1143,7 @@ function masteryBarHtml(idSuffix, opts){
   const variantClass = opts.compactSpacing ? ' mastery-bar-compact' : opts.external ? ' mastery-bar-external' : '';
   return `<div class="mastery-bar-wrap${variantClass}" id="mastery-bar-${idSuffix}">
     <div class="mastery-bar" style="background:${masteryGradientCss(counts)}"></div>
-    <details class="mastery-bar-details">
+    <details class="mastery-bar-details"${opts.openDetails ? ' open' : ''}>
       <summary>Details zum Lernfortschritt</summary>
       <ul class="mastery-legend">${masteryLegendHtml(counts)}</ul>
     </details>
@@ -2623,7 +2623,7 @@ function renderResultsHtml(){
   const overallPass = includesAll14 && passedKE >= 11;
   const ungradedOpen = session.questions.filter(q => q.type==='open' && hasOpenAnswer(q) && session.selfGrade.get(q.id)===undefined).length;
 
-  let html = `<h2>Simulationsergebnisse & Lernfortschritt (insgesamt)</h2>` + masteryBarHtml('results');
+  let html = `<h2>Simulationsergebnis & Lernfortschritt (insgesamt)</h2>` + masteryBarHtml('results');
   if(anyPendingKE){
     html += `<div class="verdict pending">
       <h2>Auswertung ausstehend</h2>
@@ -3290,7 +3290,7 @@ function updateMasteryBarCatalog(){
   if(showOnStartWrap) showOnStartWrap.classList.toggle('hidden', !memoryOn);
   const catalogSlot = document.getElementById('mastery-bar-catalog-slot');
   const outsideSlot = document.getElementById('mastery-bar-outside-slot');
-  if(catalogSlot) catalogSlot.innerHTML = showOnStart ? '' : masteryBarHtml('catalog', {compactSpacing: true, requireMemoryChecked: true});
+  if(catalogSlot) catalogSlot.innerHTML = showOnStart ? '' : masteryBarHtml('catalog', {compactSpacing: true, requireMemoryChecked: true, openDetails: true});
   if(outsideSlot) outsideSlot.innerHTML = showOnStart ? masteryBarHtml('outside', {external: true, requireMemoryChecked: true}) : '';
 }
 document.getElementById('cfg-use-memory').addEventListener('change', updateMasteryBarCatalog);
