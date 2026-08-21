@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SiM-C3RT">
-<title>SiM-C3RT v1.1</title>
+<title>SiM-C3RT v1.2</title>
 <!-- Link-sharing preview (Discord, WhatsApp, Slack, iMessage, etc.) — needs
      an absolute image URL, not a relative path, for external crawlers to
      resolve it correctly regardless of where the link was shared from. -->
@@ -123,6 +123,8 @@ button{font-family:inherit;cursor:pointer}
 .ke-filter-row .btn-link{padding:5px 10px;font-size:12px;flex:1;text-align:center;white-space:nowrap}
 .ke-filter-row .ke-action-btn{background:rgba(181,104,13,.12);color:var(--amber-d);border-color:rgba(181,104,13,.3)}
 .ke-filter-row .ke-action-btn:hover{background:rgba(181,104,13,.22)}
+.ke-filter-row .ke-action-green{background:rgba(47,158,91,.10);color:var(--green-d);border-color:rgba(47,158,91,.3)}
+.ke-filter-row .ke-action-green:hover{background:rgba(47,158,91,.2)}
 .ke-filter-row .ke-action-blue{background:rgba(29,78,216,.08);color:var(--blue);border-color:rgba(29,78,216,.15)}
 .ke-filter-row .ke-action-blue:hover{background:rgba(29,78,216,.15)}
 .ke-filter-row .ke-action-gray{background:#e6e9ee;color:var(--navy2);border-color:#d5dae2}
@@ -478,7 +480,8 @@ input[type=range]{accent-color:var(--blue)}
           <div class="small-note hidden" id="ke-empty-note" style="margin-top:0">Keinen gültigen Fragenkatalog geladen — zuerst eine Fragenquelle hinterlegen, um CE Elemente zu konfigurieren.</div>
           <div id="ke-filters-and-grid">
             <div class="toolbar-row ke-filter-row" style="margin-bottom:10px">
-              <button class="btn-link ke-action-btn" id="ke-preset-pruefungsformat">📋 Prüfungsformat</button>
+              <button class="btn-link ke-action-green" id="ke-preset-pruefungsformat">📋 Prüfungsformat</button>
+              <button class="btn-link ke-action-btn hidden" id="ke-preset-uebungsvorschlag">🎯 Übungsvorschlag</button>
               <button class="btn-link ke-action-blue" id="ke-randomize">🎲 Gewichtung zufällig</button>
               <button class="btn-link" id="ke-all">Alle auswählen</button>
             </div>
@@ -528,7 +531,8 @@ input[type=range]{accent-color:var(--blue)}
             Fragen werden bei jedem Seitenaufruf direkt aus diesem Sheet geladen (keine im Simulator gespeicherte Kopie).
             Das Sheet muss auf "Jeder mit dem Link kann ansehen" freigegeben sein. Erwartete Spalten: Kompetenzelement,
             Frage, Antwortmöglichkeit, Ergänzende Informationen. Optional: eine Spalte "ID" mit je Frage einer
-            eindeutigen Kennung — nur damit lässt sich das Lerngedächtnis unten nutzen.
+            eindeutigen Kennung — nur damit lässt sich das Lerngedächtnis unten nutzen. Der Lernfortschritt wird
+            dann anhand der ID getracked.
           </div>
           <label class="ke-item" style="margin-top:10px" id="memory-toggle-wrap">
             <input type="checkbox" id="cfg-use-memory" checked disabled>
@@ -593,7 +597,7 @@ input[type=range]{accent-color:var(--blue)}
       </svg>
       <span>mmca101/simc3rt</span>
     </a>
-    <span class="version-badge">v1.1</span>
+    <span class="version-badge">v1.2</span>
   </div>
 </div>
 
@@ -605,7 +609,7 @@ input[type=range]{accent-color:var(--blue)}
         <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
     </button>
-    <span class="version-badge topbar-version">v1.1</span>
+    <span class="version-badge topbar-version">v1.2</span>
     <div class="brand">SiM-C3RT</div>
     <div class="timer" id="timer-display">90:00</div>
     <button class="end-btn" id="end-exam-btn">PRÜFUNG BEENDEN</button>
@@ -1152,20 +1156,29 @@ function masteryBarHtml(idSuffix, opts){
 // Lower number = higher priority to serve next. Deliberately ranks a never-
 // seen question BELOW "wrong"/"skipped" ones (per explicit spec) — drilling
 // known weak spots takes precedence over introducing brand-new material;
-// unseen questions are filler once those pools run dry.
+// unseen questions are filler once those pools run dry. The final "mastered"
+// bucket is split in two rather than treated as one: a question sitting at
+// one correct answer (correctCount 1, wants a 2nd to reach gold) is prioritized
+// over one already at two (correctCount 2, capped — re-testing it can only
+// leave it flat or demote it on a wrong answer, never gain anything). Without
+// this split, re-selection within the mastered pool is uniform-random across
+// both, which wastes slots re-testing already-gold questions instead of
+// pushing green ones toward gold. Purely a selection-order concern — the
+// mastery-bar's own gray/orange/red/green/gold coloring (questionMasteryLevel
+// et al.) is entirely separate and untouched by this.
 function questionMemoryTier(q, mem){
   const e = mem[q.id];
   if(!e || !e.viewed) return 4;       // never seen — filler only
   if(!e.answered) return 3;           // opened but skipped
   if(!e.everCorrect) return 1;        // attempted, never once gotten right
   if(e.lastCorrect === false) return 2; // got it right before, wrong most recently
-  return 5;                            // mastered — lowest priority of all
+  return (e.correctCount || 0) >= 2 ? 6 : 5; // gold (6, lowest of all) vs one-correct-so-far (5)
 }
-// Groups a pool into its five priority tiers (shuffled within each) and
+// Groups a pool into its six priority tiers (shuffled within each) and
 // concatenates them in priority order, so a later .slice(0, n) naturally
 // draws the highest-priority questions first.
 function prioritizeByMemory(pool, mem){
-  const tiers = [[], [], [], [], []];
+  const tiers = [[], [], [], [], [], []];
   for(const q of pool) tiers[questionMemoryTier(q, mem) - 1].push(q);
   return tiers.flatMap(shuffle);
 }
@@ -1371,6 +1384,45 @@ function applyPruefungsformatWeights(){
 document.getElementById('ke-preset-pruefungsformat').addEventListener('click', ()=>{
   applyPruefungsformatWeights();
   weightsCustomized = false; // this *is* the default spread, not a customization worth encoding in the URL
+  updateSummary();
+  persistConfig();
+});
+// Weights a KE inversely to how much of it is already known (green/gold in
+// the Lerngedächtnis sense: correctCount>=1) — a KE with nothing mastered
+// yet gets the slider's max (7), a fully mastered one gets the min (1), same
+// 1-7 scale PRUEFUNGSFORMAT_WEIGHTS and "Gewichtung zufällig" already use,
+// so from here on it behaves exactly like any other weight configuration
+// (same allocation code, same persistence, still manually adjustable
+// afterward). Also (un)checks each KE itself: a KE that's 100% known already
+// gets deselected entirely rather than just down-weighted, so practice time
+// isn't spent re-drilling material with nothing left to learn. Recomputed
+// fresh from current data every time it's applied and fully overwrites the
+// prior checkbox/weight state each click — with no exam taken in between,
+// clicking it again gives back the identical selection, since it's a pure
+// function of the current Lerngedächtnis data (no randomness involved).
+function applyStudyRecommendationWeights(){
+  const mem = loadQuestionMemory();
+  grid.querySelectorAll('.ke-weight-input').forEach(input=>{
+    const key = input.dataset.key;
+    const pool = ALL_Q.filter(q => q.keKey === key);
+    let v = 4; // neutral default if there's no data yet to judge this KE by
+    let fullyMastered = false;
+    if(pool.length > 0){
+      const known = pool.filter(q => (mem[q.id]?.correctCount || 0) >= 1).length;
+      const masteryFrac = known / pool.length;
+      v = Math.round(1 + (1 - masteryFrac) * 6);
+      fullyMastered = masteryFrac >= 1;
+    }
+    input.value = v;
+    keWeights.set(key, v);
+    grid.querySelector(`.ke-weight-value[data-key-value="${key}"]`).textContent = `${v}×`;
+    const checkbox = grid.querySelector(`input[type=checkbox][data-key="${key}"]`);
+    if(checkbox) checkbox.checked = !fullyMastered;
+  });
+}
+document.getElementById('ke-preset-uebungsvorschlag').addEventListener('click', ()=>{
+  applyStudyRecommendationWeights();
+  weightsCustomized = true; // a genuinely personalized, data-driven spread — worth persisting like a manual edit
   updateSummary();
   persistConfig();
 });
@@ -3275,6 +3327,8 @@ function updateMemoryAvailability(){
     else if(wasDisabled) checkbox.checked = true;
   }
   if(note) note.classList.toggle('hidden', available);
+  const studyBtn = document.getElementById('ke-preset-uebungsvorschlag');
+  if(studyBtn) studyBtn.classList.toggle('hidden', !available);
 }
 
 // Empty markup (masteryBarHtml returns '') when the sheet has no valid
