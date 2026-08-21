@@ -14,7 +14,21 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SiM-C3RT">
-<title>SiM-C3RT v1.0</title>
+<title>SiM-C3RT v1.1</title>
+<!-- Link-sharing preview (Discord, WhatsApp, Slack, iMessage, etc.) — needs
+     an absolute image URL, not a relative path, for external crawlers to
+     resolve it correctly regardless of where the link was shared from. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SiM-C3RT">
+<meta property="og:locale" content="de_DE">
+<meta property="og:url" content="https://sim-c3rt.de/">
+<meta property="og:title" content="SiM-C3RT – PM-Prüfungssimulation">
+<meta property="og:description" content="Inoffizielle Übungsplattform für das GPM Basiszertifikat im Projektmanagement">
+<meta property="og:image" content="https://sim-c3rt.de/icon-512.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="SiM-C3RT – PM-Prüfungssimulation">
+<meta name="twitter:description" content="Inoffizielle Übungsplattform für das GPM Basiszertifikat im Projektmanagement">
+<meta name="twitter:image" content="https://sim-c3rt.de/icon-512.png">
 <style>
 :root{
   --navy:#152238; --navy2:#1c2f4d; --navy3:#24406b;
@@ -27,6 +41,7 @@
   --amber:#b5680d; --amber-d:#8f5209;
   --viewed:#8b7fd1; --viewed-d:#6f62b8;
   --yellow:#ffd75e; --yellow-d:#5c4300;
+  --gold-light:#fdf1a0; --gold:#d4af37; --gold-dark:#8a6a1f;
   /* Palette tuned to resemble a real certification portal, used
      for the exam-taking screen so it reads as close to the real thing as
      possible. Kept separate from the practice-tool green used elsewhere. */
@@ -122,6 +137,19 @@ button{font-family:inherit;cursor:pointer}
 .summary-line.status-bad{color:var(--danger);font-weight:600}
 .badge-note{font-size:11px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0}
 .warning-note{background:rgba(255,215,94,.18);border:1px solid var(--yellow);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--yellow-d);line-height:1.5;margin-top:12px}
+.mastery-bar-wrap{margin:12px 0}
+.mastery-bar-wrap.mastery-bar-compact{margin:10px 0 0}
+.mastery-bar-wrap.mastery-bar-external{margin:28px 0 12px;padding:0 24px}
+.mastery-bar-wrap.mastery-bar-external .mastery-bar-details summary{text-align:center}
+.mastery-bar-wrap.mastery-bar-external .mastery-legend{align-items:center}
+.mastery-bar{height:10px;border-radius:5px}
+#mastery-bar-results .mastery-bar{height:20px;border-radius:10px}
+#mastery-bar-results{margin-bottom:24px}
+.mastery-bar-details{margin-top:6px}
+.mastery-bar-details summary{font-size:11.5px;color:var(--muted);cursor:pointer}
+.mastery-legend{list-style:none;margin:6px 0 0;padding:0;font-size:12px;color:var(--text);display:flex;flex-direction:column;gap:4px}
+.mastery-legend li{display:flex;align-items:center;gap:7px}
+.mastery-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
 .rules-card{background:#eaf1ff;border:1px solid #b9d0f5;border-radius:10px;padding:20px 22px;margin-top:18px}
 .rules-header{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;flex-wrap:wrap}
 .rules-header h3{margin:0;font-size:15px;color:var(--blue-d)}
@@ -504,11 +532,16 @@ input[type=range]{accent-color:var(--blue)}
           </div>
           <label class="ke-item" style="margin-top:10px" id="memory-toggle-wrap">
             <input type="checkbox" id="cfg-use-memory" checked disabled>
-            <span>Lerngedächtnis nutzen <span class="badge-note">(berücksichtig Simulationsergebnisse — benötigt ID Spalte in Quelle)</span></span>
+            <span>Lerngedächtnis und Fortschritttracking <span class="badge-note">(benötigt ID Spalte in Quelle)</span></span>
           </label>
           <div class="small-note hidden" id="memory-unavailable-note">
             Diese Fragenquelle hat keine eindeutige ID je Frage — Lerngedächtnis ist erst mit einer "ID"-Spalte verfügbar (siehe oben).
           </div>
+          <label class="ke-item hidden" style="margin-top:10px" id="show-progress-start-wrap">
+            <input type="checkbox" id="cfg-show-progress-start" checked>
+            <span>Fortschritt auf Startseite anzeigen</span>
+          </label>
+          <div id="mastery-bar-catalog-slot"></div>
         </div>
       </details>
     </div>
@@ -521,6 +554,8 @@ input[type=range]{accent-color:var(--blue)}
       </div>
     </div>
   </div>
+
+  <div id="mastery-bar-outside-slot"></div>
 
   <div class="rules-card hidden" id="rules-card">
     <div class="rules-header">
@@ -558,7 +593,7 @@ input[type=range]{accent-color:var(--blue)}
       </svg>
       <span>mmca101/simc3rt</span>
     </a>
-    <span class="version-badge">v1.0</span>
+    <span class="version-badge">v1.1</span>
   </div>
 </div>
 
@@ -570,7 +605,7 @@ input[type=range]{accent-color:var(--blue)}
         <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
     </button>
-    <span class="version-badge topbar-version">v1.0</span>
+    <span class="version-badge topbar-version">v1.1</span>
     <div class="brand">SiM-C3RT</div>
     <div class="timer" id="timer-display">90:00</div>
     <button class="end-btn" id="end-exam-btn">PRÜFUNG BEENDEN</button>
@@ -996,9 +1031,123 @@ function recordQuestionMemory(q, patch){
   if(typeof patch.correct === 'boolean'){
     entry.lastCorrect = patch.correct;
     if(patch.correct) entry.everCorrect = true;
+    // Separate "mastery" tracking for the progress-bar visualization (Fahrschule-
+    // app style: two correct answers = "gelernt"). correctCount is capped at 2 —
+    // a 3rd+ correct answer doesn't matter further. A wrong answer only demotes a
+    // question that currently holds credit (2->1, 1->0); it never touches a
+    // question that's never once been correct (that's a plain, non-demoting
+    // "answered wrongly" — still ends up red, just not via demotion).
+    if(patch.correct){
+      entry.correctCount = Math.min((entry.correctCount || 0) + 1, 2);
+      entry.lastWrong = false;
+    } else {
+      entry.correctCount = Math.max((entry.correctCount || 0) - 1, 0);
+      entry.lastWrong = true;
+    }
   }
   mem[q.id] = entry;
   saveQuestionMemory(mem);
+}
+// gray = never seen, orange = seen but not yet resolved (viewed/answered but
+// no grade yet), red = currently zero credit AND the last grade was wrong
+// (whether never-once-correct, or freshly demoted down from green), green =
+// one correct credit, gold = two-plus ("gelernt", matches the two-correct-
+// in-a-row convention common to German Fahrschule theory-exam apps).
+// Deliberately puts "once correct" at green rather than at the top of the
+// scale: on a large catalog, waiting for the true top color (gold) to show
+// up at all can otherwise read as no progress for a long time — green
+// lands as soon as a question is answered right even once, gold is the
+// extra, unambiguous "truly learned" tier on top of that.
+function questionMasteryLevel(entry){
+  if(!entry || !entry.viewed) return 'gray';
+  const cc = entry.correctCount || 0;
+  if(cc === 0) return entry.lastWrong ? 'red' : 'orange';
+  if(cc === 1) return 'green';
+  return 'gold';
+}
+const MASTERY_LEVELS = ['gray', 'orange', 'red', 'green', 'gold'];
+const MASTERY_LABELS = {
+  gray: 'Frage noch nie gesehen', orange: 'Gesehen, nicht gewertet',
+  red: 'Zuletzt falsch beantwortet', green: 'Einmal richtig beantwortet',
+  gold: 'Zweimal (gold) richtig gelernt'
+};
+const MASTERY_COLOR_VAR = {gray: '--grey', orange: '--amber', red: '--danger', green: '--green', gold: '--gold'};
+// Gold gets a light-dark-light metallic sheen instead of one flat stop —
+// both the small legend dot (radial, simulating a light hitting a coin) and
+// its own span within the bar (linear, three internal stops) use the same
+// three gold tones for a consistent "metallic" read at both sizes.
+const MASTERY_GOLD_DOT_BG = 'radial-gradient(circle at 32% 28%, var(--gold-light), var(--gold) 55%, var(--gold-dark) 100%)';
+// Tallies the CURRENTLY LOADED catalog only (ALL_Q) — a question id stored
+// in localStorage from a previously loaded, different sheet simply never
+// gets looked up here, so it can't skew these percentages.
+function computeMasteryDistribution(){
+  const counts = {gray: 0, orange: 0, red: 0, green: 0, gold: 0};
+  if(!ALL_Q.stableIds) return counts;
+  const mem = loadQuestionMemory();
+  for(const q of ALL_Q) counts[questionMasteryLevel(mem[q.id])]++;
+  return counts;
+}
+// A smooth blended strip rather than hard-edged blocks: each color's stop
+// sits at the MIDPOINT of its own share of the bar, so linear-gradient's
+// natural interpolation blends into its neighbors instead of cutting sharply
+// at each boundary — a bigger share reads as a clearer "pure" band, a small
+// share mostly just tints the blend between its neighbors. Gold is the one
+// exception: instead of a single stop, it gets its own light-dark-light
+// three-stop shimmer spanning its actual zone width, still blending into
+// its neighbors at the zone's own start/end.
+function masteryGradientCss(counts){
+  const total = MASTERY_LEVELS.reduce((s,k)=> s + counts[k], 0);
+  if(total === 0) return `var(${MASTERY_COLOR_VAR.gray})`;
+  let cum = 0;
+  const stops = [];
+  for(const k of MASTERY_LEVELS){
+    const width = counts[k] / total * 100;
+    if(width <= 0) continue;
+    if(k === 'gold'){
+      // Gold is always last in MASTERY_LEVELS, so it's always the bar's
+      // rightmost segment with nothing after it to blend into — fading its
+      // trailing edge to dark (like the other two stops do, for the sake of
+      // blending into a NEXT segment) would just dull the true edge and
+      // read as narrower than its actual share. Ends on solid, full-strength
+      // gold instead; only the leading edge fades in from its neighbor.
+      const start = cum, end = cum + width, mid = cum + width/2;
+      stops.push(`var(--gold-dark) ${start.toFixed(2)}%`, `var(--gold-light) ${mid.toFixed(2)}%`, `var(--gold) ${end.toFixed(2)}%`);
+    } else {
+      stops.push(`var(${MASTERY_COLOR_VAR[k]}) ${(cum + width/2).toFixed(2)}%`);
+    }
+    cum += width;
+  }
+  if(stops.length === 1) return stops[0].split(' ')[0];
+  return `linear-gradient(to right, ${stops.join(', ')})`;
+}
+function masteryLegendHtml(counts){
+  const total = MASTERY_LEVELS.reduce((s,k)=> s + counts[k], 0);
+  return MASTERY_LEVELS.map(k=>{
+    const pct = total === 0 ? 0 : Math.round(counts[k] / total * 100);
+    const dotBg = k === 'gold' ? MASTERY_GOLD_DOT_BG : `var(${MASTERY_COLOR_VAR[k]})`;
+    return `<li><span class="mastery-dot" style="background:${dotBg}"></span>${MASTERY_LABELS[k]}: ${pct} % (${counts[k]})</li>`;
+  }).join('');
+}
+// Shared by the start screen (updated live via JS) and the results page
+// (regenerated fresh with every renderResultsHtml() call) — hidden entirely
+// without a properly ID'd sheet, same gate as the Lerngedächtnis checkbox.
+function masteryBarHtml(idSuffix, opts){
+  opts = opts || {};
+  if(!ALL_Q.stableIds) return '';
+  // The catalog-tab placement doubles as the Lerngedächtnis feature's own
+  // status display — no point showing progress data for a feature that's
+  // currently switched off (and unchecked always means either not yet
+  // gated-available, or a deliberate opt-out either way).
+  if(opts.requireMemoryChecked && !document.getElementById('cfg-use-memory')?.checked) return '';
+  const counts = computeMasteryDistribution();
+  const variantClass = opts.compactSpacing ? ' mastery-bar-compact' : opts.external ? ' mastery-bar-external' : '';
+  return `<div class="mastery-bar-wrap${variantClass}" id="mastery-bar-${idSuffix}">
+    <div class="mastery-bar" style="background:${masteryGradientCss(counts)}"></div>
+    <details class="mastery-bar-details">
+      <summary>Details zum Lernfortschritt</summary>
+      <ul class="mastery-legend">${masteryLegendHtml(counts)}</ul>
+    </details>
+  </div>`;
 }
 // Lower number = higher priority to serve next. Deliberately ranks a never-
 // seen question BELOW "wrong"/"skipped" ones (per explicit spec) — drilling
@@ -1041,6 +1190,7 @@ function persistConfig(){
       focusType: focusSlider.value,
       mcFirst: document.getElementById('cfg-mc-first').checked,
       cheatMode: document.getElementById('cfg-cheat-mode').checked,
+      showProgressOnStart: document.getElementById('cfg-show-progress-start').checked,
       keKeys: selectedKEKeys()
     };
     // Only remember weights that were a deliberate choice — otherwise the
@@ -1120,6 +1270,7 @@ function applySavedScalarFields(){
   if(focusType) focusSlider.value = focusType;
   if(typeof mcFirst === 'boolean') document.getElementById('cfg-mc-first').checked = mcFirst;
   if(typeof cheatMode === 'boolean') document.getElementById('cfg-cheat-mode').checked = cheatMode;
+  if(typeof cfg.showProgressOnStart === 'boolean') document.getElementById('cfg-show-progress-start').checked = cfg.showProgressOnStart;
 }
 function applySavedKeSelection(){
   const params = new URLSearchParams(location.search);
@@ -1447,12 +1598,14 @@ document.getElementById('cfg-reset-btn').addEventListener('click', ()=>{
   grid.querySelectorAll('input[type=checkbox]').forEach(el=>el.checked=true);
   document.getElementById('cfg-mc-first').checked = true;
   document.getElementById('cfg-cheat-mode').checked = false;
+  document.getElementById('cfg-show-progress-start').checked = true;
   focusSlider.value = '19';
   applyPruefungsformatWeights(); // true out-of-the-box default is the real exam's per-KE spread, not all-1×
   weightsCustomized = false;
   updateFocusLabel();
   updateSummary();
   updateToggleBadge();
+  updateMasteryBarCatalog();
   clearSavedConfig();
   updateShareableUrl(); // drops any ?n=/t=/f=/ke=/kw=/sheet= back to a clean URL
   // deliberately does not touch the saved Gemini API key
@@ -1791,8 +1944,8 @@ let readerActiveBtn = null;
 function readerSetIcon(btn, playing, idleTitle){
   btn.classList.toggle('reading', playing);
   btn.innerHTML = playing ? READER_ICON_READING_SVG : READER_ICON_IDLE_SVG;
-  btn.title = playing ? 'Pausieren' : idleTitle;
-  btn.setAttribute('aria-label', playing ? 'Pausieren' : idleTitle);
+  btn.title = playing ? 'Stoppen' : idleTitle;
+  btn.setAttribute('aria-label', playing ? 'Stoppen' : idleTitle);
 }
 
 function readerStop(){
@@ -1802,22 +1955,21 @@ function readerStop(){
   readerActiveBtn = null;
 }
 
-// Shared by the question reader and the Musterantwort reader: same
-// pause/resume-in-place toggle, but starting a new text on a different
-// button always interrupts whatever the other one was reading.
+// Shared by the question reader and the Musterantwort reader. Deliberately
+// stop-and-restart rather than a true pause/resume-in-place toggle: the Web
+// Speech API's pause()/resume() pair is unreliable across browsers (a
+// well-documented Chrome bug lets resume() silently no-op, leaving the
+// utterance permanently stuck with no way to continue except cancelling —
+// which the button itself had no way to trigger, so a second click just
+// stopped reacting entirely). cancel()/speak() are reliable everywhere, and
+// re-reading from the start is a fine tradeoff for questions this short.
+// Starting a new text on a different button always interrupts whatever the
+// other one was reading.
 function readerSpeak(text, btn, idleTitle){
   if(!readerSupported || !text) return;
-  if(readerActiveBtn === btn){
-    if(speechSynthesis.speaking && !speechSynthesis.paused){
-      speechSynthesis.pause();
-      readerSetIcon(btn, false, idleTitle);
-      return;
-    }
-    if(speechSynthesis.paused){
-      speechSynthesis.resume();
-      readerSetIcon(btn, true, idleTitle);
-      return;
-    }
+  if(readerActiveBtn === btn && speechSynthesis.speaking){
+    readerStop();
+    return;
   }
   readerStop();
   const utter = new SpeechSynthesisUtterance(text);
@@ -2471,7 +2623,7 @@ function renderResultsHtml(){
   const overallPass = includesAll14 && passedKE >= 11;
   const ungradedOpen = session.questions.filter(q => q.type==='open' && hasOpenAnswer(q) && session.selfGrade.get(q.id)===undefined).length;
 
-  let html = '';
+  let html = `<h2>Simulationsergebnisse & Lernfortschritt (insgesamt)</h2>` + masteryBarHtml('results');
   if(anyPendingKE){
     html += `<div class="verdict pending">
       <h2>Auswertung ausstehend</h2>
@@ -2482,7 +2634,7 @@ function renderResultsHtml(){
     </div>`;
   } else if(includesAll14){
     html += `<div class="verdict ${overallPass?'pass':'fail'}">
-      <h2>${overallPass ? 'Bestanden' : 'Nicht bestanden'}</h2>
+      <h2>${overallPass ? 'Bestanden' : 'Simulation nicht bestanden'}</h2>
       <p>${passedKE} von ${totalKE} Kompetenzelementen auf dem geforderten Niveau (≥ 50 % richtig) nachgewiesen ·
       erforderlich sind mindestens 11.</p>
     </div>`;
@@ -2534,7 +2686,7 @@ function renderResultsHtml(){
   }
   html += `<div class="toolbar-row fill-row" style="margin-bottom:24px">
     <button class="btn btn-orange" id="reconfigure-btn">Konfiguration überarbeiten</button>
-    <button class="btn btn-primary" id="restart-btn">Neue Simulation starten</button>
+    <button class="btn btn-primary" id="restart-btn">Simulation neustarten</button>
     ${bulkAiBtnHtml}
     <button class="btn btn-secondary" id="export-csv-btn">📥 Ergebnis speichern</button>
   </div>
@@ -2602,6 +2754,7 @@ function wireResultsEvents(){
     // form since the start screen last computed its own key status — the
     // warning banner and KI-Auswertung badge would otherwise stay stale.
     refreshAiKeyStatus();
+    updateMasteryBarCatalog();
   });
 
   const aiAllBtn = document.getElementById('ai-grade-all-btn');
@@ -3124,6 +3277,25 @@ function updateMemoryAvailability(){
   if(note) note.classList.toggle('hidden', available);
 }
 
+// Empty markup (masteryBarHtml returns '') when the sheet has no valid
+// ids, matching the same gate as the Lerngedächtnis checkbox above. The
+// "Fortschritt auf Startseite anzeigen" checkbox MOVES the bar rather than
+// duplicating it — exactly one of the two slots ever gets content.
+function updateMasteryBarCatalog(){
+  const memoryOn = !!document.getElementById('cfg-use-memory')?.checked;
+  const showOnStart = memoryOn && !!document.getElementById('cfg-show-progress-start')?.checked;
+  const showOnStartWrap = document.getElementById('show-progress-start-wrap');
+  // Moot without Lerngedächtnis active — nothing to place anywhere either
+  // way, so the toggle for WHERE to place it has nothing to control.
+  if(showOnStartWrap) showOnStartWrap.classList.toggle('hidden', !memoryOn);
+  const catalogSlot = document.getElementById('mastery-bar-catalog-slot');
+  const outsideSlot = document.getElementById('mastery-bar-outside-slot');
+  if(catalogSlot) catalogSlot.innerHTML = showOnStart ? '' : masteryBarHtml('catalog', {compactSpacing: true, requireMemoryChecked: true});
+  if(outsideSlot) outsideSlot.innerHTML = showOnStart ? masteryBarHtml('outside', {external: true, requireMemoryChecked: true}) : '';
+}
+document.getElementById('cfg-use-memory').addEventListener('change', updateMasteryBarCatalog);
+document.getElementById('cfg-show-progress-start').addEventListener('change', ()=>{ persistConfig(); updateMasteryBarCatalog(); });
+
 async function loadQuestions(){
   const standNote = document.getElementById('sheet-stand-note');
   const rawValue = sheetUrlInput.value.trim();
@@ -3141,6 +3313,7 @@ async function loadQuestions(){
     }
     updateSummary();
     updateMemoryAvailability();
+    updateMasteryBarCatalog();
     return;
   }
   sheetStatus.textContent = 'Lade Fragen…';
@@ -3180,6 +3353,7 @@ async function loadQuestions(){
   } finally {
     sheetReloadBtn.disabled = false;
     updateMemoryAvailability();
+    updateMasteryBarCatalog();
   }
 }
 sheetReloadBtn.addEventListener('click', loadQuestions);

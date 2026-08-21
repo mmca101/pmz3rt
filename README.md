@@ -63,7 +63,14 @@ gilt genauso für einen normalen Browser-Aufruf der nackten Domain.
 Im Konfigurator (Karte "Fragenquelle") lässt sich die Google-Sheet-URL
 eintragen. Es wird immer nur das **erste Tabellenblatt** (`gid=0`) gelesen.
 Erwartete Spalten: `Kompetenzelement`, `Frage`, `Antwortmöglichkeit`,
-`Ergänzende Informationen`. Es gibt keine im Code hinterlegte Standard-URL —
+`Ergänzende Informationen`. Optional zusätzlich eine Spalte `ID` (Kopfzeile
+`ID`, `Frage-ID` oder `Fragen-ID`, Position egal) mit einer je Frage
+eindeutigen, über Sheet-Bearbeitungen hinweg stabilen Kennung — erst damit
+lässt sich das [Lerngedächtnis](#lerngedächtnis--fortschrittsanzeige) nutzen.
+Fehlt die Spalte oder ist eine ID leer/doppelt, fällt die App sheet-weit auf
+eine reine Zeilenposition als Kennung zurück und das Lerngedächtnis bleibt
+deaktiviert, statt mit einer instabilen ID falsche Ergebnisse zu speichern.
+Es gibt keine im Code hinterlegte Standard-URL —
 ohne eingetragene oder per Link mitgegebene Sheet-URL zeigt der Konfigurator
 "Keine Quelle gefunden" und die Prüfung lässt sich nicht starten.
 
@@ -136,6 +143,11 @@ Nachgebildet aus der Anleitung (Kap. 6.2–6.9):
   nötig ist.
 - Ergebnisse als CSV exportierbar (Kompetenzelement, Frage, eigene Antwort,
   Musterantwort, Zusatzinfo, Bewertung, KI-Begründung)
+- Übungs-Modus (Cheat-Modus, optional, Standard: aus): zeigt Musterantwort
+  bzw. richtige Antwort direkt auf jeder Fragenseite während der Prüfung
+  statt erst im Review — inkl. Vorlese-Button für die Musterantwort (gleiche
+  Web-Speech-API wie beim Vorlesen der Frage) und optionaler KI-Bewertung
+  direkt vor Ort, sobald ein Gemini-Key hinterlegt ist
 
 ## KI-Bewertung offener Fragen (optional)
 
@@ -148,6 +160,12 @@ bekommt im Review-Modus automatisch nach Prüfungsende sowie zusätzlich per
 vergleicht Antwort und Musterantwort inhaltlich, liefert eine kurze Begründung
 und setzt automatisch richtig/falsch — das fließt direkt in die
 Kompetenzelement-Auswertung ein.
+
+Sind Haupt- und Fallback-Modell gleichzeitig überlastet/limitiert (beide
+Google-eigene Retries bereits ausgeschöpft), steht im Übungs-Modus zusätzlich
+zum "Erneut versuchen"-Button auch die manuelle Selbsteinschätzung zur
+Verfügung, statt die Frage bis zum nächsten Kontingent-Reset unbewertbar zu
+lassen.
 
 Technisch bleibt die App dabei ein reines Static File: Der Key wird nur lokal
 im Browser (`localStorage`) gespeichert und der Request geht direkt vom
@@ -182,3 +200,38 @@ keine genaue Gesamtzahl an Prüfungsfragen. Offiziell dokumentiert sind nur: 90
 Minuten Bearbeitungszeit, 14 Kompetenzelemente, 11 davon müssen bestanden
 werden. Die Angaben zu 61 Fragen und ~11–12 Checkbox-Fragen stammen von der
 Kursleitung, nicht von der Zertifizierungsstelle selbst.
+
+## Lerngedächtnis & Fortschrittsanzeige
+
+Enthält das geladene Sheet eine gültige `ID`-Spalte (siehe
+[Fragenquelle](#fragenquelle)), merkt sich die App geräteübergreifend in
+`localStorage`, welche Fragen bereits gesehen, beantwortet und richtig oder
+falsch gelöst wurden — über beliebig viele Übungsdurchläufe hinweg, nicht
+nur innerhalb einer Prüfung. Steuerbar über die Checkbox "Lerngedächtnis und
+Fortschritttracking" in der Konfigurator-Karte "Fragenkatalogquelle"
+(Standard: an, sobald eine gültige ID-Spalte erkannt wird; ohne gültige IDs
+bleibt die Checkbox deaktiviert).
+
+Ist das Lerngedächtnis aktiv, priorisiert die Fragenauswahl gezielt: nie
+gelernte Fragen zuerst, dann zuletzt falsch beantwortete, dann gesehene aber
+übersprungene, dann noch nie gesehene als Auffüller — bereits gemeisterte
+Fragen (siehe unten) haben die niedrigste Priorität. So wiederholt sich der
+Fragenpool bei regelmäßigem Üben nicht ständig selbst, sondern konzentriert
+sich zunehmend auf tatsächliche Wissenslücken.
+
+Ein Fortschrittsbalken visualisiert den Lernstand über den gesamten aktuell
+geladenen Fragenkatalog als Farbverlauf: **grau** = nie gesehen, **orange** =
+gesehen, aber noch nicht bewertet, **rot** = zuletzt falsch beantwortet,
+**grün** = einmal richtig beantwortet, **gold** (mit Glanzeffekt) = zweimal
+richtig beantwortet ("gelernt" — nach dem in deutschen
+Fahrschul-Lern-Apps üblichen Zwei-mal-richtig-Prinzip). Eine bereits
+gemeisterte Frage wird bei einer erneut falschen Antwort nur um eine Stufe
+zurückgestuft (gold → grün → rot), nicht komplett zurückgesetzt. Eine
+aufklappbare Legende unter dem Balken zeigt die genauen Anteile in Prozent.
+
+Der Balken erscheint standardmäßig kompakt direkt in der Konfigurator-Karte
+"Fragenkatalogquelle" sowie am Ende jeder Prüfung auf der Ergebnisseite. Über
+die zusätzliche Checkbox "Fortschritt auf Startseite anzeigen" (ebenfalls
+Standard: an) lässt er sich stattdessen prominent zwischen Konfigurator und
+Fußzeile auf der Startseite anzeigen, statt in der Karte versteckt zu sein —
+beide Checkboxen merken sich ihren Zustand geräteübergreifend.
