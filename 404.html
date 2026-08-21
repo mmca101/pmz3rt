@@ -1395,13 +1395,20 @@ document.getElementById('ke-preset-pruefungsformat').addEventListener('click', (
 // (same allocation code, same persistence, still manually adjustable
 // afterward). Also (un)checks each KE itself: a KE that's 100% known already
 // gets deselected entirely rather than just down-weighted, so practice time
-// isn't spent re-drilling material with nothing left to learn. Recomputed
-// fresh from current data every time it's applied and fully overwrites the
-// prior checkbox/weight state each click — with no exam taken in between,
+// isn't spent re-drilling material with nothing left to learn. If the
+// computed weights come out identical across every KE — e.g. a fresh
+// catalog with no practice data yet, so there's nothing to actually
+// differentiate on — that flat 1:1 spread carries no real recommendation,
+// so it falls back to Prüfungsformat's real per-KE exam distribution
+// instead. As soon as practice data makes the weights diverge from each
+// other, the calculated spread is used again. Recomputed fresh from
+// current data every time it's applied and fully overwrites the prior
+// checkbox/weight state each click — with no exam taken in between,
 // clicking it again gives back the identical selection, since it's a pure
 // function of the current Lerngedächtnis data (no randomness involved).
 function applyStudyRecommendationWeights(){
   const mem = loadQuestionMemory();
+  const computed = [];
   grid.querySelectorAll('.ke-weight-input').forEach(input=>{
     const key = input.dataset.key;
     const pool = ALL_Q.filter(q => q.keKey === key);
@@ -1413,12 +1420,18 @@ function applyStudyRecommendationWeights(){
       v = Math.round(1 + (1 - masteryFrac) * 6);
       fullyMastered = masteryFrac >= 1;
     }
-    input.value = v;
-    keWeights.set(key, v);
-    grid.querySelector(`.ke-weight-value[data-key-value="${key}"]`).textContent = `${v}×`;
+    computed.push({key, v, fullyMastered});
+  });
+  const weightedEqually = computed.every(c => c.v === computed[0]?.v);
+  for(const {key, v, fullyMastered} of computed){
+    const finalV = weightedEqually ? (PRUEFUNGSFORMAT_WEIGHTS[key] || 1) : v;
+    const input = grid.querySelector(`.ke-weight-input[data-key="${key}"]`);
+    input.value = finalV;
+    keWeights.set(key, finalV);
+    grid.querySelector(`.ke-weight-value[data-key-value="${key}"]`).textContent = `${finalV}×`;
     const checkbox = grid.querySelector(`input[type=checkbox][data-key="${key}"]`);
     if(checkbox) checkbox.checked = !fullyMastered;
-  });
+  }
 }
 document.getElementById('ke-preset-uebungsvorschlag').addEventListener('click', ()=>{
   applyStudyRecommendationWeights();
