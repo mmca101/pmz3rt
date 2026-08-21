@@ -1144,7 +1144,7 @@ function masteryBarHtml(idSuffix, opts){
   return `<div class="mastery-bar-wrap${variantClass}" id="mastery-bar-${idSuffix}">
     <div class="mastery-bar" style="background:${masteryGradientCss(counts)}"></div>
     <details class="mastery-bar-details"${opts.openDetails ? ' open' : ''}>
-      <summary>Details zum Lernfortschritt</summary>
+      <summary>Details zum Lernfortschritt${idSuffix === 'results' ? ' (insgesamt)' : ''}</summary>
       <ul class="mastery-legend">${masteryLegendHtml(counts)}</ul>
     </details>
   </div>`;
@@ -2623,7 +2623,7 @@ function renderResultsHtml(){
   const overallPass = includesAll14 && passedKE >= 11;
   const ungradedOpen = session.questions.filter(q => q.type==='open' && hasOpenAnswer(q) && session.selfGrade.get(q.id)===undefined).length;
 
-  let html = `<h2>Simulationsergebnis & Lernfortschritt (insgesamt)</h2>` + masteryBarHtml('results');
+  let html = `<h2>Simulationsergebnis & Lernfortschritt</h2>` + masteryBarHtml('results');
   if(anyPendingKE){
     html += `<div class="verdict pending">
       <h2>Auswertung ausstehend</h2>
